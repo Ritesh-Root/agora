@@ -64,8 +64,12 @@ The generation model expects a SINGLE prompt to produce a SINGLE ${activeTeam?.o
       ? `\nREVISION REQUESTED:\n${pendingReviews.map(t => `- [${t.title}] Feedback: ${t.reviewComments}`).join('\n')}`
       : '';
 
+    const skills = agent.skills && agent.skills.length > 0
+      ? `\nSKILLS (apply these to everything you produce):\n${agent.skills.map(s => `- ${s.name}: ${s.instructions}`).join('\n')}`
+      : '';
+
     return `ID: ${agent.name}. Role: ${agent.description}. Phase: ${phase}.
-${brief ? `Brief: ${brief}` : ''}${reviewContext}
+${brief ? `Brief: ${brief}` : ''}${reviewContext}${skills}
 Team: User (0), ${team}
 KANBAN:
 ${board}

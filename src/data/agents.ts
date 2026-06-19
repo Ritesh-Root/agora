@@ -24,6 +24,15 @@ export function toLogicalIndex(renderIndex: number): number {
   return renderIndex - MAX_PLAYERS + 1;
 }
 export const DEFAULT_AGENTIC_SET_ID = 'single-agent';
+export interface AgentSkill {
+  id: string;
+  name: string;
+  /** One-line summary shown in the skill picker. */
+  description: string;
+  /** Behavioral instructions injected into the agent's system prompt. */
+  instructions: string;
+}
+
 export interface AgentNode {
   id: string;
   index: number;
@@ -32,9 +41,23 @@ export interface AgentNode {
   color: string;
   model: string;
   humanInTheLoop?: boolean;
+  /** Composable expertise modules that shape how this agent works. */
+  skills?: AgentSkill[];
   position?: { x: number; y: number };
   subagents?: AgentNode[];
 }
+
+/** Built-in skill palette — starting points users can attach to any agent (and then customize). */
+export const BUILTIN_SKILLS: AgentSkill[] = [
+  { id: 'web-research', name: 'Web Research', description: 'Find and synthesize credible, current information.', instructions: 'Prioritize primary sources, cite specifics, and flag uncertainty. Return findings as tight bullet points, each with its source.' },
+  { id: 'code-review', name: 'Code Review', description: 'Audit code for correctness, security, and clarity.', instructions: 'Point to exact lines, explain the concrete risk, and propose a minimal fix. Flag only what matters — no praise, no nitpicks.' },
+  { id: 'copywriting', name: 'Copywriting', description: 'Persuasive, on-brand short-form copy.', instructions: 'Lead with the benefit, cut filler, vary sentence length, and match the brand voice. Every word earns its place.' },
+  { id: 'data-analysis', name: 'Data Analysis', description: 'Reason quantitatively from data.', instructions: 'State assumptions, show the calculation, give the headline number first, then the caveats. Never invent figures.' },
+  { id: 'critical-reviewer', name: 'Critical Reviewer', description: 'Stress-test ideas and outputs.', instructions: 'Steelman the work, then surface the strongest objection, the likeliest failure mode, and the missing evidence. Be specific, not vague.' },
+  { id: 'summarizer', name: 'Summarizer', description: 'Compress to the essential.', instructions: 'Open with a one-sentence takeaway, then 3–5 bullets. No preamble, no repetition.' },
+  { id: 'brainstormer', name: 'Brainstormer', description: 'Generate diverse, non-obvious options.', instructions: 'Favor quantity then quality; include non-obvious angles. Tag each idea with its key upside and main risk.' },
+  { id: 'fact-checker', name: 'Fact-Checker', description: 'Verify claims against sources.', instructions: 'Mark each claim Confirmed / Unsupported / False with a one-line reason and a source where possible.' },
+];
 
 export type OutputType = 'text' | 'image' | 'music' | 'video';
 export interface AgenticSystem {

@@ -1,7 +1,8 @@
-import { Cpu, Save, Target, Trash2, User, X, Check, Pipette, Zap, CircleUser } from 'lucide-react';
+import { Cpu, Save, Target, Trash2, User, X, Check, Pipette, Zap, CircleUser, Sparkles } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
-import { AgentNode, AgenticSystem, getAllCharacters } from '../../data/agents';
+import { AgentNode, AgenticSystem, getAllCharacters, BUILTIN_SKILLS, AgentSkill } from '../../data/agents';
 import { USER_COLOR, USER_COLOR_LIGHT, USER_COLOR_SOFT } from '../../theme/brand';
+import { DEFAULT_MODELS } from '../../core/llm/constants';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { useTeamStore } from '../../integration/store/teamStore';
 import { Avatar } from '../components/Avatar';
@@ -31,6 +32,9 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
   const { saveCustomSystem } = useTeamStore();
 
   const [editData, setEditData] = useState<AgentNode>(agent);
+  const [skillMenuMode, setSkillMenuMode] = useState<'none' | 'custom'>('none');
+  const [customSkillName, setCustomSkillName] = useState('');
+  const [customSkillInstr, setCustomSkillInstr] = useState('');
   const isUser = agent.index === 0;
   const isLead = agent.index === 1;
 
@@ -45,6 +49,21 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
   };
 
   const allCharacters = useMemo(() => getAllCharacters(activeSystem), [activeSystem]);
+
+  const agentSkills = editData.skills || [];
+  const availablePresets = BUILTIN_SKILLS.filter(b => !agentSkills.some(s => s.id === b.id));
+  const addSkill = (skill: AgentSkill) => {
+    if (agentSkills.some(s => s.id === skill.id || s.name.toLowerCase().trim() === skill.name.toLowerCase().trim())) return;
+    updateDraft({ skills: [...agentSkills, skill] });
+  };
+  const removeSkill = (id: string) => updateDraft({ skills: agentSkills.filter(s => s.id !== id) });
+  const addCustomSkill = () => {
+    const name = customSkillName.trim();
+    const instructions = customSkillInstr.trim();
+    if (!name || !instructions) return;
+    addSkill({ id: `custom-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, name, description: 'Custom skill', instructions });
+    setCustomSkillName(''); setCustomSkillInstr(''); setSkillMenuMode('none');
+  };
 
 
   const nameCollision = useMemo(() => {
@@ -182,17 +201,17 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
 
               {renderField('LLM Model', <Cpu size={12} />, isView ? (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-mono text-zinc-600 w-fit lowercase">
-                  {editData.model || 'minimaxai/minimax-m3'}
+                  {editData.model || DEFAULT_MODELS.text}
                 </div>
               ) : (
                 <select
-                  value={editData.model || 'minimaxai/minimax-m3'}
+                  value={editData.model || DEFAULT_MODELS.text}
                   onChange={(e) => updateDraft({ model: e.target.value })}
                   className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-black/5 cursor-pointer lowercase"
                 >
                   {availableModels.map(m => <option key={m} value={m} className="lowercase">{m}</option>)}
                 </select>
-              ), 'The specific NVIDIA model this agent will use.')}
+              ), 'The LLM this agent uses (per-agent model tiering — e.g. qwen-max for planners, qwen-turbo for cheap subtasks).')}
             </div>
 
             {/* Content Group */}
@@ -211,6 +230,83 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
                   placeholder="What is this agent specialized in? What are its primary goals and constraints?"
                 />
               ), 'A concise yet comprehensive definition of the agent\'s role, expertise, and operational guidelines.')}
+            </div>
+
+            {/* Skills */}
+            <div className="space-y-6">
+              {renderField('Skills', <Sparkles size={12} />, (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {agentSkills.map(s => (
+                      <span
+                        key={s.id}
+                        title={s.instructions}
+                        className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-zinc-100 border border-zinc-200 rounded-full text-[10px] font-bold text-zinc-700"
+                      >
+                        {s.name}
+                        {!isView && (
+                          <button onClick={() => removeSkill(s.id)} className="text-zinc-400 hover:text-red-500 transition-colors">
+                            <X size={11} strokeWidth={3} />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                    {agentSkills.length === 0 && (
+                      <span className="text-[10px] text-zinc-400 italic font-medium">No skills yet — add expertise below.</span>
+                    )}
+                  </div>
+
+                  {!isView && skillMenuMode === 'none' && (
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === '__custom__') { setSkillMenuMode('custom'); return; }
+                        const preset = BUILTIN_SKILLS.find(b => b.id === v);
+                        if (preset) addSkill(preset);
+                      }}
+                      className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-medium text-zinc-600 focus:outline-none focus:ring-2 focus:ring-black/5 cursor-pointer"
+                    >
+                      <option value="" disabled>+ Add a skill…</option>
+                      {availablePresets.map(b => <option key={b.id} value={b.id}>{b.name} — {b.description}</option>)}
+                      <option value="__custom__">✏️ Custom skill…</option>
+                    </select>
+                  )}
+
+                  {!isView && skillMenuMode === 'custom' && (
+                    <div className="space-y-2 bg-zinc-50 border border-zinc-200 rounded-xl p-2.5">
+                      <input
+                        type="text"
+                        value={customSkillName}
+                        onChange={(e) => setCustomSkillName(e.target.value)}
+                        placeholder="Skill name (e.g. SEO Strategy)"
+                        className="w-full px-2.5 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-black/5"
+                      />
+                      <textarea
+                        value={customSkillInstr}
+                        onChange={(e) => setCustomSkillInstr(e.target.value)}
+                        placeholder="Instructions: how should the agent apply this skill?"
+                        className="w-full h-20 px-2.5 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-black/5 text-zinc-600"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={addCustomSkill}
+                          disabled={!customSkillName.trim() || !customSkillInstr.trim()}
+                          className="flex-1 py-1.5 bg-darkDelegation text-white rounded-lg text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Add skill
+                        </button>
+                        <button
+                          onClick={() => { setSkillMenuMode('none'); setCustomSkillName(''); setCustomSkillInstr(''); }}
+                          className="px-3 py-1.5 text-zinc-500 hover:bg-zinc-100 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ), 'Composable expertise modules. Each skill injects behavioral instructions into this agent\'s prompt — mix presets or define your own.')}
             </div>
 
 
