@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
-// Standalone config (does not load the app's vite.config) so society-engine
-// tests run in a fast Node environment without the React/Tailwind pipeline.
+// Standalone config (no app plugins) so the pure-logic society tests run fast
+// in a Node environment without the React/Tailwind/relay dev pipeline.
 export default defineConfig({
   test: {
-    include: ['server/**/*.test.ts'],
+    include: ['src/core/society/**/*.test.ts', 'server/society/**/*.test.ts'],
     environment: 'node',
   },
 });
