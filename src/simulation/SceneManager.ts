@@ -79,6 +79,15 @@ export class SceneManager {
     this.unsubs.push(networkClient.onMessage((msg) => this._onNetworkMessage(msg)));
   }
 
+  private showRendererError() {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;padding:24px;text-align:center;font:500 14px system-ui,sans-serif;color:#cbd5e1;background:#0c0c0d;z-index:1;';
+    el.innerHTML =
+      '<div style="font-weight:800;font-size:18px;color:#fff;">AGORA needs WebGPU or WebGL2</div>' +
+      '<div>Open this app in a recent <b>Chrome</b> or <b>Edge</b> with hardware acceleration enabled.</div>';
+    this.container.appendChild(el);
+  }
+
   private startWatchingCoreStore() {
     this.unsubs.push(
       useCoreStore.subscribe((state, prevState) => {
@@ -113,6 +122,11 @@ export class SceneManager {
   private async init() {
     await this.engine.init();
     if (this.isDisposed) return;
+    if (!this.engine.initialized) {
+      // No GPU backend — show a clear message instead of looping a dead renderer.
+      this.showRendererError();
+      return;
+    }
 
     await this.worldManager.load();
     await this.characterManager.load();

@@ -7,7 +7,7 @@ import {relayPlugin} from './server/relay';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: '/the-delegation/',
+    base: '/',
     plugins: [react(), tailwindcss(), relayPlugin()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
