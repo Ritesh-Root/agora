@@ -11,5 +11,6 @@
     "strict": true,
     "noEmit": true
   },
-  "include": ["**/*.ts", "../shared/protocol.ts"]
+  "include": ["**/*.ts", "../shared/protocol.ts"],
+  "exclude": ["**/*.test.ts"]
 }
