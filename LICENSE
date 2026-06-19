@@ -1,11 +1,6 @@
-# Project Licenses
+MIT License
 
-This project uses a dual-licensing model to distinguish between the open-source code and the creative assets.
-
----
-
-## Source Code License: MIT
-
+Copyright (c) 2026 Ritesh-Root
 Copyright (c) 2026 Arturo Paracuellos (unboring.net)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,23 +20,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-## 3D Assets License: CC BY-NC 4.0
-
-**Copyright (c) 2026 Arturo Paracuellos (unboring.net)**
-
-All 3D models (`.glb`, `.gltf`), textures, and custom environment maps located in the `/models` directory (or equivalent assets folder) are licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License**.
-
-**Under this license, you are free to:**
-
-- **Share:** Copy and redistribute the material in any medium or format.
-- **Adapt:** Remix, transform, and build upon the material.
-
-**Under the following terms:**
-
-- **Attribution:** You must give appropriate credit to Arturo Paracuellos (unboring.net).
-- **Non-Commercial:** You may not use the material for commercial purposes.
-
-To view a copy of this license, visit: http://creativecommons.org/licenses/by-nc/4.0/
