@@ -41,8 +41,10 @@ export interface AgentNode {
   color: string;
   model: string;
   humanInTheLoop?: boolean;
-  /** Composable expertise modules that shape how this agent works. */
-  skills?: AgentSkill[];
+  /** Ids of reusable skills (from the skill library) attached to this agent. */
+  skillIds?: string[];
+  /** Per-agent tool: allow this agent to delegate work via propose_task. */
+  canDelegate?: boolean;
   position?: { x: number; y: number };
   subagents?: AgentNode[];
 }

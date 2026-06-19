@@ -69,7 +69,7 @@ export class AgentBrain {
 
       const allAgents = this.host.simulation.getAllAgents();
       const systemPrompt = PromptBuilder.buildSystemPrompt(this.host.data, core.phase, core.userBrief, allAgents);
-      const toolDefs = options.tools || ToolRegistry.getDefinitions(this.host.data.index, core.phase, this.host.data.subagents?.length || 0);
+      const toolDefs = options.tools || ToolRegistry.getDefinitions(this.host.data.index, core.phase, this.host.data.subagents?.length || 0, this.host.data.canDelegate ?? false);
 
       // 3. Log and Execute LLM Call
       core.addRequestLog({

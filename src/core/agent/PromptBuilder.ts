@@ -1,6 +1,7 @@
 import { AgentNode } from '../../data/agents';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { getActiveAgentSet } from '../../integration/store/teamStore';
+import { resolveSkills } from '../../integration/store/skillStore';
 
 export class PromptBuilder {
   /**
@@ -64,8 +65,9 @@ The generation model expects a SINGLE prompt to produce a SINGLE ${activeTeam?.o
       ? `\nREVISION REQUESTED:\n${pendingReviews.map(t => `- [${t.title}] Feedback: ${t.reviewComments}`).join('\n')}`
       : '';
 
-    const skills = agent.skills && agent.skills.length > 0
-      ? `\nSKILLS (apply these to everything you produce):\n${agent.skills.map(s => `- ${s.name}: ${s.instructions}`).join('\n')}`
+    const agentSkills = resolveSkills(agent.skillIds);
+    const skills = agentSkills.length > 0
+      ? `\nSKILLS (apply these to everything you produce):\n${agentSkills.map(s => `- ${s.name}: ${s.instructions}`).join('\n')}`
       : '';
 
     return `ID: ${agent.name}. Role: ${agent.description}. Phase: ${phase}.

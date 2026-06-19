@@ -1,10 +1,12 @@
 import { Cpu, Save, Target, Trash2, User, X, Check, Pipette, Zap, CircleUser, Sparkles } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
-import { AgentNode, AgenticSystem, getAllCharacters, BUILTIN_SKILLS, AgentSkill } from '../../data/agents';
+import { AgentNode, AgenticSystem, getAllCharacters, AgentSkill } from '../../data/agents';
 import { USER_COLOR, USER_COLOR_LIGHT, USER_COLOR_SOFT } from '../../theme/brand';
 import { DEFAULT_MODELS } from '../../core/llm/constants';
 import { useCoreStore } from '../../integration/store/coreStore';
 import { useTeamStore } from '../../integration/store/teamStore';
+import { useSkillStore } from '../../integration/store/skillStore';
+import { SkillLibraryModal } from './SkillLibraryModal';
 import { Avatar } from '../components/Avatar';
 import { ColorPicker } from './ColorPicker';
 import { InfoBubble } from '../components/InfoBubble';
@@ -35,6 +37,7 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
   const [skillMenuMode, setSkillMenuMode] = useState<'none' | 'custom'>('none');
   const [customSkillName, setCustomSkillName] = useState('');
   const [customSkillInstr, setCustomSkillInstr] = useState('');
+  const [showLibrary, setShowLibrary] = useState(false);
   const isUser = agent.index === 0;
   const isLead = agent.index === 1;
 
@@ -50,18 +53,25 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
 
   const allCharacters = useMemo(() => getAllCharacters(activeSystem), [activeSystem]);
 
-  const agentSkills = editData.skills || [];
-  const availablePresets = BUILTIN_SKILLS.filter(b => !agentSkills.some(s => s.id === b.id));
-  const addSkill = (skill: AgentSkill) => {
-    if (agentSkills.some(s => s.id === skill.id || s.name.toLowerCase().trim() === skill.name.toLowerCase().trim())) return;
-    updateDraft({ skills: [...agentSkills, skill] });
+  const library = useSkillStore(s => s.library);
+  const upsertLibrarySkill = useSkillStore(s => s.upsertSkill);
+  const assignedIds = editData.skillIds || [];
+  const assignedSkills = assignedIds
+    .map(id => library.find(s => s.id === id))
+    .filter((s): s is AgentSkill => !!s);
+  const availablePresets = library.filter(b => !assignedIds.includes(b.id));
+  const assignSkill = (id: string) => {
+    if (assignedIds.includes(id)) return;
+    updateDraft({ skillIds: [...assignedIds, id] });
   };
-  const removeSkill = (id: string) => updateDraft({ skills: agentSkills.filter(s => s.id !== id) });
+  const unassignSkill = (id: string) => updateDraft({ skillIds: assignedIds.filter(x => x !== id) });
   const addCustomSkill = () => {
     const name = customSkillName.trim();
     const instructions = customSkillInstr.trim();
     if (!name || !instructions) return;
-    addSkill({ id: `custom-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, name, description: 'Custom skill', instructions });
+    const id = `custom-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString(36)}`;
+    upsertLibrarySkill({ id, name, description: 'Custom skill', instructions });
+    updateDraft({ skillIds: [...assignedIds, id] });
     setCustomSkillName(''); setCustomSkillInstr(''); setSkillMenuMode('none');
   };
 
@@ -237,7 +247,7 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
               {renderField('Skills', <Sparkles size={12} />, (
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-1.5">
-                    {agentSkills.map(s => (
+                    {assignedSkills.map(s => (
                       <span
                         key={s.id}
                         title={s.instructions}
@@ -245,32 +255,39 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
                       >
                         {s.name}
                         {!isView && (
-                          <button onClick={() => removeSkill(s.id)} className="text-zinc-400 hover:text-red-500 transition-colors">
+                          <button onClick={() => unassignSkill(s.id)} className="text-zinc-400 hover:text-red-500 transition-colors">
                             <X size={11} strokeWidth={3} />
                           </button>
                         )}
                       </span>
                     ))}
-                    {agentSkills.length === 0 && (
-                      <span className="text-[10px] text-zinc-400 italic font-medium">No skills yet — add expertise below.</span>
+                    {assignedSkills.length === 0 && (
+                      <span className="text-[10px] text-zinc-400 italic font-medium">No skills yet — add from the library below.</span>
                     )}
                   </div>
 
                   {!isView && skillMenuMode === 'none' && (
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === '__custom__') { setSkillMenuMode('custom'); return; }
-                        const preset = BUILTIN_SKILLS.find(b => b.id === v);
-                        if (preset) addSkill(preset);
-                      }}
-                      className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-medium text-zinc-600 focus:outline-none focus:ring-2 focus:ring-black/5 cursor-pointer"
-                    >
-                      <option value="" disabled>+ Add a skill…</option>
-                      {availablePresets.map(b => <option key={b.id} value={b.id}>{b.name} — {b.description}</option>)}
-                      <option value="__custom__">✏️ Custom skill…</option>
-                    </select>
+                    <div className="space-y-1.5">
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '__custom__') { setSkillMenuMode('custom'); return; }
+                          if (v) assignSkill(v);
+                        }}
+                        className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-medium text-zinc-600 focus:outline-none focus:ring-2 focus:ring-black/5 cursor-pointer"
+                      >
+                        <option value="" disabled>+ Add a skill from the library…</option>
+                        {availablePresets.map(b => <option key={b.id} value={b.id}>{b.name} — {b.description}</option>)}
+                        <option value="__custom__">✏️ New custom skill…</option>
+                      </select>
+                      <button
+                        onClick={() => setShowLibrary(true)}
+                        className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-darkDelegation transition-colors"
+                      >
+                        Manage skill library →
+                      </button>
+                    </div>
                   )}
 
                   {!isView && skillMenuMode === 'custom' && (
@@ -353,6 +370,26 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
                 </div>
               ), "Tools are automatically assigned based on the agent's role and team hierarchy.")}
 
+              {!isLead && (editData.subagents?.length || 0) === 0 && renderField('Delegation', <Zap size={12} />, (
+                <div
+                  onClick={() => !isView && updateDraft({ canDelegate: !editData.canDelegate })}
+                  className={`group flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 ${editData.canDelegate ? 'shadow-sm' : 'bg-zinc-50 border-zinc-100 hover:border-zinc-200'} ${isView ? 'pointer-events-none' : 'cursor-pointer active:scale-[0.98]'}`}
+                  style={{ backgroundColor: editData.canDelegate ? USER_COLOR_LIGHT : undefined, borderColor: editData.canDelegate ? USER_COLOR_SOFT : undefined }}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className={`text-[10px] font-black uppercase tracking-tight ${editData.canDelegate ? '' : 'text-zinc-700'}`} style={{ color: editData.canDelegate ? USER_COLOR : undefined }}>
+                      Can delegate tasks
+                    </span>
+                    <span className="text-[9px] text-zinc-500 font-medium leading-tight max-w-[160px]">
+                      Grants the propose_task tool so this agent can assign work to teammates.
+                    </span>
+                  </div>
+                  <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${editData.canDelegate ? '' : 'bg-zinc-300'}`} style={{ backgroundColor: editData.canDelegate ? USER_COLOR : undefined }}>
+                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-200 shadow-sm ${editData.canDelegate ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                  </div>
+                </div>
+              ), "When enabled, this worker can break work down and assign subtasks to other agents (propose_task).")}
+
               {renderField('Supervision', <User size={12} />, (
                 <div
                   onClick={() => !isView && updateDraft({ humanInTheLoop: !editData.humanInTheLoop })}
@@ -419,6 +456,8 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
           )}
         </div>
       )}
+
+      {showLibrary && <SkillLibraryModal onClose={() => setShowLibrary(false)} />}
     </div>
   );
 };

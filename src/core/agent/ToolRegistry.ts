@@ -41,7 +41,7 @@ export class ToolRegistry {
     }
   }
 
-  public static getDefinitions(agentIndex: number, phase: string, subagentsCount: number = 0): any[] {
+  public static getDefinitions(agentIndex: number, phase: string, subagentsCount: number = 0, canDelegate: boolean = false): any[] {
     const isLead = agentIndex === 1;
     const isManager = subagentsCount > 0;
     const tools: any[] = [];
@@ -67,7 +67,7 @@ export class ToolRegistry {
 
     // 2. Working Phase: Common tools for everyone
     if (phase === 'working') {
-      if (isLead || isManager) {
+      if (isLead || isManager || canDelegate) {
         tools.push({
           type: 'function',
           function: {
