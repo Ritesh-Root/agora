@@ -31,6 +31,9 @@ export const useUiStore = create<CharacterState>()(
     setBYOKOpen: (open: boolean, error: string | null = null) =>
       set({ isBYOKOpen: open, byokError: error }),
 
+    isNegotiationOpen: false,
+    setNegotiationOpen: (open: boolean) => set({ isNegotiationOpen: open }),
+
     activeAuditTaskId: null,
     setActiveAuditTaskId: (taskId: string | null) => set({ activeAuditTaskId: taskId }),
 

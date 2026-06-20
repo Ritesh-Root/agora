@@ -1,4 +1,4 @@
-import { Info, KeyRound, Maximize2, Settings, Users } from 'lucide-react';
+import { Info, KeyRound, Maximize2, Settings, Users, Scale } from 'lucide-react';
 import React, { useState } from 'react';
 import packageJson from '../../package.json';
 import { useCoreStore } from '../integration/store/coreStore';
@@ -7,11 +7,12 @@ import { useRosterStore } from '../network/RosterStore';
 import { MAX_PLAYERS } from '../../shared/protocol';
 import BYOKModal from './BYOKModal';
 import InfoModal from './InfoModal';
+import { NegotiationArena } from './NegotiationArena';
 
 const version = packageJson.version;
 
 const Header: React.FC = () => {
-  const { llmConfig, isBYOKOpen, setBYOKOpen } = useUiStore();
+  const { llmConfig, isBYOKOpen, setBYOKOpen, isNegotiationOpen, setNegotiationOpen } = useUiStore();
   const { setViewMode } = useCoreStore();
   const roster = useRosterStore((s) => s.roster);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
@@ -123,6 +124,13 @@ const Header: React.FC = () => {
             <Maximize2 size={16} />
           </button>
           <button
+            onClick={() => setNegotiationOpen(true)}
+            className="text-zinc-400 hover:text-darkDelegation transition-colors p-1"
+            title="Negotiation Arena — agents debate to resolve conflicts"
+          >
+            <Scale size={16} />
+          </button>
+          <button
             onClick={() => setBYOKOpen(true)}
             className="relative text-zinc-400 hover:text-darkDelegation transition-colors p-1"
             title="API Key (BYOK)"
@@ -141,6 +149,10 @@ const Header: React.FC = () => {
 
       {isBYOKOpen && (
         <BYOKModal key="byok-modal" onClose={() => setBYOKOpen(false)} />
+      )}
+
+      {isNegotiationOpen && (
+        <NegotiationArena key="negotiation-arena" onClose={() => setNegotiationOpen(false)} />
       )}
     </header>
   );

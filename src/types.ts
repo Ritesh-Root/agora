@@ -34,6 +34,9 @@ export interface CharacterState {
   byokError: string | null;
   setBYOKOpen: (open: boolean, error?: string | null) => void;
 
+  isNegotiationOpen: boolean;
+  setNegotiationOpen: (open: boolean) => void;
+
   activeAuditTaskId: string | null;
   setActiveAuditTaskId: (taskId: string | null) => void;
 
