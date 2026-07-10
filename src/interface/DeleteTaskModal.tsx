@@ -33,7 +33,7 @@ const DeleteTaskModal: React.FC<DeleteTaskModalProps> = ({ isOpen, onClose, onCo
             </button>
           </div>
 
-          <h3 className="text-lg font-bold text-darkDelegation mb-1.5 leading-tight">
+          <h3 className="text-lg font-bold text-ink mb-1.5 leading-tight">
             Delete Task?
           </h3>
           <p className="text-[13px] text-zinc-500 leading-relaxed mb-6">

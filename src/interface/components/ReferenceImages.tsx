@@ -63,8 +63,8 @@ export const ReferenceImages: React.FC = () => {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <UploadCloud size={12} className={isDragging ? 'text-darkDelegation animate-bounce' : 'text-zinc-400'} />
-          <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${isDragging ? 'text-darkDelegation' : 'text-zinc-400'
+          <UploadCloud size={12} className={isDragging ? 'text-ink animate-bounce' : 'text-zinc-400'} />
+          <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${isDragging ? 'text-ink' : 'text-zinc-400'
             }`}>Reference Images</span>
         </div>
         <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-tighter">
@@ -105,11 +105,11 @@ export const ReferenceImages: React.FC = () => {
             className={`aspect-square rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-1 group active:scale-95 ${isDragging ? 'border-zinc-300 bg-white' : 'border-zinc-100 hover:border-zinc-200 hover:bg-zinc-50'
               }`}
           >
-            <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors border shadow-sm ${isDragging ? 'bg-darkDelegation border-darkDelegation' : 'bg-zinc-50 group-hover:bg-white border-transparent group-hover:border-zinc-100'
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors border shadow-sm ${isDragging ? 'bg-ink border-ink' : 'bg-zinc-50 group-hover:bg-white border-transparent group-hover:border-zinc-100'
               }`}>
-              <Plus size={14} className={isDragging ? 'text-white' : 'text-zinc-400 group-hover:text-darkDelegation'} />
+              <Plus size={14} className={isDragging ? 'text-white' : 'text-zinc-400 group-hover:text-ink'} />
             </div>
-            <span className={`text-[8px] font-black uppercase tracking-tighter transition-colors ${isDragging ? 'text-darkDelegation' : 'text-zinc-300 group-hover:text-zinc-500'
+            <span className={`text-[8px] font-black uppercase tracking-tighter transition-colors ${isDragging ? 'text-ink' : 'text-zinc-300 group-hover:text-zinc-500'
               }`}>Add</span>
           </button>
         )}
@@ -134,7 +134,7 @@ export const ReferenceImages: React.FC = () => {
         className="hidden"
       />
 
-      <p className={`text-[9px] font-medium leading-tight transition-colors ${isDragging ? 'text-darkDelegation font-bold' : 'text-zinc-400'
+      <p className={`text-[9px] font-medium leading-tight transition-colors ${isDragging ? 'text-ink font-bold' : 'text-zinc-400'
         }`}>
         {isDragging ? 'Drop images to add as reference' : 'Add visual references (or drop them here) to guide the team.'}
       </p>

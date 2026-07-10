@@ -57,7 +57,7 @@ export const DirectionalEdge = ({ id, source, target, sourceX, sourceY, targetX,
                   {retryCount && (
                     <div className="flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-full shadow-md border-2 border-white bg-white/95">
                       <Repeat2 size={12} strokeWidth={3} className="text-zinc-500" />
-                      <span className="text-[11px] font-black text-darkDelegation leading-none">
+                      <span className="text-[11px] font-black text-ink leading-none">
                         {retryCount}
                       </span>
                     </div>

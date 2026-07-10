@@ -35,12 +35,12 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     keyPrefix: 'nvapi-',
     keyPlaceholder: 'nvapi-...',
     consoleUrl: 'https://build.nvidia.com/',
-    models: ['minimaxai/minimax-m3'],
-    defaultModel: 'minimaxai/minimax-m3',
+    models: ['qwen/qwen3.5-122b-a10b', 'qwen/qwen3-next-80b-a3b-instruct', 'minimaxai/minimax-m3'],
+    defaultModel: 'qwen/qwen3.5-122b-a10b',
     tiers: {
-      manager: 'minimaxai/minimax-m3',
-      worker: 'minimaxai/minimax-m3',
-      cheap: 'minimaxai/minimax-m3',
+      manager: 'qwen/qwen3.5-122b-a10b',
+      worker: 'qwen/qwen3.5-122b-a10b',
+      cheap: 'qwen/qwen3.5-122b-a10b',
     },
   },
 };

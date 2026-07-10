@@ -5,8 +5,10 @@ import { useRosterStore } from '../network/RosterStore';
 import { USER_COLOR } from '../theme/brand';
 import { ColorPicker } from './VisualConfigurator/ColorPicker';
 
-const NAME_STORAGE_KEY = 'delegation-player-name';
-const COLOR_STORAGE_KEY = 'delegation-player-color';
+import { createPortal } from 'react-dom';
+
+const NAME_STORAGE_KEY = 'agora-player-name';
+const COLOR_STORAGE_KEY = 'agora-player-color';
 
 const JoinModal: React.FC = () => {
   const status = useRosterStore((s) => s.status);
@@ -35,14 +37,14 @@ const JoinModal: React.FC = () => {
     networkClient.connect(trimmed, color);
   };
 
-  return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
-      <div className="absolute inset-0 bg-white/60 backdrop-blur-xl" />
-      <div className="relative w-full max-w-md bg-white rounded-[40px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] p-8 md:p-10 border border-zinc-100">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
+      <div className="absolute inset-0 bg-white/60 backdrop-blur-xl animate-fade-in" />
+      <div className="relative w-full max-w-md bg-white rounded-[40px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] p-8 md:p-10 border border-zinc-100 animate-slide-up">
         <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="mb-6">
-            <h2 className="text-3xl font-black text-darkDelegation tracking-tight mb-2">
+            <h2 className="text-3xl font-black text-ink tracking-tight mb-2">
               {isRoomFull ? 'Office Full' : 'Join the Office'}
             </h2>
             <p className="text-zinc-400 text-sm font-medium leading-relaxed max-w-[280px]">
@@ -55,7 +57,7 @@ const JoinModal: React.FC = () => {
           {isRoomFull ? (
             <button
               onClick={() => useRosterStore.getState().setStatus('idle')}
-              className="w-full px-12 py-4 bg-darkDelegation text-white rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:bg-black transition-all active:scale-95 cursor-pointer shadow-xl shadow-black/10"
+              className="w-full px-12 py-4 bg-ink text-white rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:bg-black transition-all active:scale-95 cursor-pointer shadow-xl shadow-black/10"
             >
               Try Again
             </button>
@@ -91,7 +93,7 @@ const JoinModal: React.FC = () => {
                   maxLength={24}
                   disabled={isBusy}
                   autoFocus
-                  className="w-full bg-zinc-50 border border-zinc-100 rounded-3xl px-6 py-4 text-sm text-darkDelegation font-medium placeholder:text-zinc-300 focus:outline-none focus:border-zinc-200 transition-all shadow-sm disabled:opacity-50"
+                  className="w-full bg-zinc-50 border border-zinc-100 rounded-3xl px-6 py-4 text-sm text-ink font-medium placeholder:text-zinc-300 focus:outline-none focus:border-zinc-200 transition-all shadow-sm disabled:opacity-50"
                 />
               </div>
 
@@ -109,7 +111,7 @@ const JoinModal: React.FC = () => {
               <button
                 onClick={handleJoin}
                 disabled={!name.trim() || isBusy}
-                className="w-full px-12 py-4 bg-darkDelegation text-white rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:bg-black transition-all active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-black/10"
+                className="w-full px-12 py-4 bg-ink text-white rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:bg-black transition-all active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-black/10"
               >
                 {isBusy ? (isPreparing ? 'Waiting for host…' : 'Connecting…') : 'Join'}
               </button>
@@ -117,7 +119,8 @@ const JoinModal: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

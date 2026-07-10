@@ -434,16 +434,18 @@ export class CharacterManager {
       }
 
       // Special skinning for static accessories
+      let hasSkinning = !!geometry.attributes.skinIndex;
       if ((isHeadphones || isCap) && this.headBoneIndex !== -1 && !geometry.attributes.skinIndex) {
         const skinIndices = new Float32Array(geometry.attributes.position.count * 4).fill(this.headBoneIndex);
         const skinWeights = new Float32Array(geometry.attributes.position.count * 4).fill(0);
         for (let i = 0; i < geometry.attributes.position.count; i++) skinWeights[i * 4] = 1.0;
         instancedGeometry.setAttribute('skinIndex', new THREE.BufferAttribute(skinIndices, 4));
         instancedGeometry.setAttribute('skinWeight', new THREE.BufferAttribute(skinWeights, 4));
+        hasSkinning = true;
       }
 
       const isVisible = isHeadphones ? accessoryType.equal(float(1)) : (isCap ? accessoryType.equal(float(2)) : float(1));
-      const vertexNode = this.createVertexNode(isVisible.and(instanceAlpha.greaterThan(0)));
+      const vertexNode = this.createVertexNode(isVisible.and(instanceAlpha.greaterThan(0)), hasSkinning);
       material.positionNode = vertexNode;
       (material as any).castShadowPositionNode = vertexNode;
 
@@ -458,7 +460,7 @@ export class CharacterManager {
     }
   }
 
-  private createVertexNode(isVisibleNode: any) {
+  private createVertexNode(isVisibleNode: any, hasSkinning: boolean) {
     return Fn(() => {
       const instancePos = this.positionStorage.element(instanceIndex).xyz;
       const rawVel = this.velocityStorage.element(instanceIndex).xyz;
@@ -487,7 +489,7 @@ export class CharacterManager {
 
       const finalPosition = positionLocal.toVar();
 
-      if (this.bakedAnimationsBuffer && this.metaBuffer) {
+      if (hasSkinning && this.bakedAnimationsBuffer && this.metaBuffer) {
         const animBuffer = storage(this.bakedAnimationsBuffer, 'mat4', this.bakedAnimationsBuffer.count);
         const metaStorage = storage(this.metaBuffer, 'vec4', this.metaBuffer.count);
 
@@ -512,10 +514,8 @@ export class CharacterManager {
         const skinMat = mat4(0).toVar();
 
         const addInfluence = (boneIdxNode: any, weightNode: any) => {
-          If(weightNode.greaterThan(0), () => {
-            const address = animOffset.add(safeFrame.mul(uint(this.numBones))).add(boneIdxNode.toUint());
-            skinMat.addAssign(animBuffer.element(address).mul(weightNode));
-          });
+          const address = animOffset.add(safeFrame.mul(uint(this.numBones))).add(boneIdxNode.toUint());
+          skinMat.addAssign(animBuffer.element(address).mul(weightNode));
         };
 
         addInfluence(skinIndex.x, skinWeight.x);

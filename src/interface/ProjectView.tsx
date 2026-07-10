@@ -47,7 +47,7 @@ const ProjectView: React.FC = () => {
     <div className="flex flex-col h-full overflow-y-auto p-6 bg-white/50">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xl font-black text-darkDelegation leading-tight">Project Info</h2>
+          <h2 className="text-xl font-black text-ink leading-tight">Project Info</h2>
           <div className="flex items-center gap-2">
             <div
               className="px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors border border-transparent"
@@ -72,7 +72,7 @@ const ProjectView: React.FC = () => {
           <button
             onClick={() => setIsResetModalOpen(true)}
             className={`w-full flex items-center justify-center gap-2 px-4 py-4 rounded-2xl transition-all active:scale-[0.98] group ${phase === 'done'
-                ? 'bg-darkDelegation hover:bg-black text-white shadow-xl shadow-darkDelegation/10'
+                ? 'bg-ink hover:bg-black text-white shadow-xl shadow-ink/10'
                 : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-400 hover:text-zinc-600'
               }`}
           >
@@ -134,7 +134,7 @@ const ProjectView: React.FC = () => {
 
         <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-100 mb-6">
           <div className="flex flex-col gap-1 mb-6">
-            <span className="text-4xl font-mono font-black text-darkDelegation tracking-tighter">
+            <span className="text-4xl font-mono font-black text-ink tracking-tighter">
               {formatTokens(useCoreStore.getState().totalTokenUsage.totalTokens)}
             </span>
           </div>
@@ -161,7 +161,7 @@ const ProjectView: React.FC = () => {
                 <div key={idx} className="flex items-center justify-between py-2 px-2 hover:bg-zinc-100/50 rounded-lg transition-colors group">
                   <div className="flex items-center gap-3">
                     <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]" style={{ backgroundColor: agent.color }} />
-                    <span className="text-[11px] font-bold text-zinc-600 uppercase tracking-tight group-hover:text-darkDelegation transition-colors">
+                    <span className="text-[11px] font-bold text-zinc-600 uppercase tracking-tight group-hover:text-ink transition-colors">
                       {agent.name}
                     </span>
                   </div>
@@ -172,7 +172,7 @@ const ProjectView: React.FC = () => {
                           ${useCoreStore.getState().agentEstimatedCost[agentIndex].toFixed(4)}
                         </span>
                       )}
-                      <span className="text-[11px] font-mono font-black text-darkDelegation">
+                      <span className="text-[11px] font-mono font-black text-ink">
                         {formatTokens(usage.totalTokens)}
                       </span>
                     </div>

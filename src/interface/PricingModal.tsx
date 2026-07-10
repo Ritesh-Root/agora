@@ -1,5 +1,6 @@
 import { ExternalLink, X, Sparkles } from 'lucide-react';
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { MODEL_PRICING } from '../core/llm/pricing';
 import { DEFAULT_MODELS } from '../core/llm/constants';
 
@@ -13,8 +14,8 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
     .sort(([a], [b]) => (a === DEFAULT_MODELS.text ? -1 : (b === DEFAULT_MODELS.text ? 1 : 0)));
   const outputModels = Object.entries(MODEL_PRICING).filter(([_, p]) => p.inputPer1M === undefined);
 
-  return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
       <div
         onClick={onClose}
         className="absolute inset-0 bg-white/60 backdrop-blur-xl"
@@ -33,7 +34,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
         <div className="mx-auto">
           {/* Header */}
           <div className="mb-10 text-center">
-            <h2 className="text-3xl font-black text-darkDelegation tracking-tight mb-2">
+            <h2 className="text-3xl font-black text-ink tracking-tight mb-2">
               NVIDIA Model Pricing
             </h2>
             <p className="text-zinc-500 text-xs font-medium leading-relaxed">
@@ -61,7 +62,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
                           </div>
                         )}
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <p className="text-xs font-bold text-darkDelegation lowercase">
+                          <p className="text-xs font-bold text-ink lowercase">
                             {model}
                           </p>
                           {isDefault && <Sparkles size={10} className="text-blue-500" />}
@@ -69,11 +70,11 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
                         <div className="flex items-center gap-5 text-xs font-mono font-bold">
                           <div className="flex items-center gap-2">
                             <span className="text-zinc-400 font-medium uppercase text-[10px] tracking-tighter">In</span>
-                            <span className="text-darkDelegation">${pricing.inputPer1M?.toFixed(2)}</span>
+                            <span className="text-ink">${pricing.inputPer1M?.toFixed(2)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-zinc-400 font-medium uppercase text-[10px] tracking-tighter">Out</span>
-                            <span className="text-darkDelegation">${pricing.outputPer1M?.toFixed(2)}</span>
+                            <span className="text-ink">${pricing.outputPer1M?.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
@@ -111,14 +112,14 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
                               </div>
                             )}
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <p className="text-xs font-bold text-darkDelegation lowercase">
+                              <p className="text-xs font-bold text-ink lowercase">
                                 {model}
                               </p>
                               {isDefault && <Sparkles size={10} className="text-amber-500" />}
                             </div>
                             <div className="flex items-center gap-4">
                               <span className="text-zinc-400 font-medium uppercase text-[10px] tracking-tight">Img</span>
-                              <span className="text-sm font-mono font-bold text-darkDelegation">
+                              <span className="text-sm font-mono font-bold text-ink">
                                 ${pricing.perImage?.toFixed(3)}
                               </span>
                             </div>
@@ -169,7 +170,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
                               </div>
                             )}
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <p className="text-xs font-bold text-darkDelegation lowercase">
+                              <p className="text-xs font-bold text-ink lowercase">
                                 {model}
                               </p>
                               {isDefault && <Sparkles size={10} className={colors.icon} />}
@@ -178,7 +179,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
                               <span className="text-zinc-400 font-medium uppercase text-[10px] tracking-tight">
                                 {label}
                               </span>
-                              <span className="text-sm font-mono font-bold text-darkDelegation">
+                              <span className="text-sm font-mono font-bold text-ink">
                                 ${(pricing.perSong || pricing.perSecond || 0).toFixed(3)}
                               </span>
                             </div>
@@ -193,7 +194,8 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

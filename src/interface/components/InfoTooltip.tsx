@@ -52,7 +52,7 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
 
       {isVisible && createPortal(
         <div
-          className="fixed bg-darkDelegation text-white text-[10px] px-3 py-2 rounded-lg shadow-2xl z-[9999] pointer-events-none border border-darkDelegation text-center animate-in fade-in zoom-in-95 duration-200"
+          className="fixed bg-ink text-white text-[10px] px-3 py-2 rounded-lg shadow-2xl z-[9999] pointer-events-none border border-ink text-center animate-in fade-in zoom-in-95 duration-200"
           style={{
             left: coords.x,
             top: coords.y - 8,
@@ -64,7 +64,7 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
           {text}
           {/* Arrow */}
           <div
-            className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-darkDelegation"
+            className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-ink"
           />
         </div>,
         document.body

@@ -67,7 +67,7 @@ function TaskCard({ task }: { task: Task; key?: string }) {
         className="flex items-start justify-between gap-1 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <h3 className="text-xs text-darkDelegation leading-snug font-bold flex-1">
+        <h3 className="text-xs text-ink leading-snug font-bold flex-1">
           {task.title || 'Untitled Task'}
         </h3>
         <div className="flex items-center gap-1 opacity-100 group-hover:opacity-100 transition-opacity">

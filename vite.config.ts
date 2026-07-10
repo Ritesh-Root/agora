@@ -6,12 +6,10 @@ import {relayPlugin} from './server/relay';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  process.env.DASHSCOPE_API_KEY = env.DASHSCOPE_API_KEY || process.env.DASHSCOPE_API_KEY;
   return {
     base: '/',
     plugins: [react(), tailwindcss(), relayPlugin()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

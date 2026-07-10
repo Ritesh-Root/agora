@@ -81,8 +81,8 @@ export interface AgenticSystem {
 
 export const AGENTIC_SETS: AgenticSystem[] = [
   {
-    id: 'unboring-net',
-    teamName: 'unboring.net',
+    id: 'creative-studio',
+    teamName: 'Creative Studio',
     teamType: 'Agency',
     teamDescription: 'A full-service creative agency covering branding, design, development and go-to-market strategy.',
     color: '#4285F4',
@@ -362,6 +362,121 @@ export const AGENTIC_SETS: AgenticSystem[] = [
               position: { x: 0, y: 390 }
             }
           ]
+        }
+      ]
+    }
+  },
+  {
+    id: 'game-studio',
+    teamName: 'Game Dev Studio',
+    teamType: 'Game Development',
+    teamDescription: 'A multi-disciplinary game development studio creating immersive mechanics, narrative, and level design.',
+    color: '#8B5CF6',
+    outputType: 'text',
+    outputModel: DEFAULT_MODELS.text,
+    outputAutoApprove: true,
+    user: { index: 0, model: 'Human', position: { x: 0, y: 0 } },
+    leadAgent: {
+      id: 'game-director',
+      index: 1,
+      name: 'Game Director',
+      description: 'Orchestrates design, mechanics, level building, and audio to deliver cohesive gameplay experiences.',
+      color: '#8B5CF6',
+      model: DEFAULT_MODELS.text,
+      humanInTheLoop: true,
+      position: { x: 0, y: 130 },
+      subagents: [
+        {
+          id: 'game-designer',
+          index: 2,
+          name: 'Game Designer',
+          description: 'Architects gameplay loops, economy systems, and player progression balancing.',
+          color: '#EAB308',
+          model: DEFAULT_MODELS.text,
+          skillIds: ['brainstormer'],
+          position: { x: -300, y: 280 }
+        },
+        {
+          id: 'level-designer',
+          index: 3,
+          name: 'Level Designer',
+          description: 'Builds whitebox environments, layout flows, and puzzle interactions.',
+          color: '#14B8A6',
+          model: DEFAULT_MODELS.text,
+          skillIds: ['data-analysis'],
+          position: { x: -100, y: 280 }
+        },
+        {
+          id: 'narrative-designer',
+          index: 4,
+          name: 'Narrative Designer',
+          description: 'Authors game lore, dialogue transcripts, quest lines, and character bibles.',
+          color: '#EC4899',
+          model: DEFAULT_MODELS.text,
+          skillIds: ['copywriting'],
+          position: { x: 100, y: 280 }
+        },
+        {
+          id: 'game-audio-engineer',
+          index: 5,
+          name: 'Audio Lead',
+          description: 'Arranges immersive soundscapes, ambient tracks, and sound effect trigger definitions.',
+          color: '#22C55E',
+          model: DEFAULT_MODELS.text,
+          position: { x: 300, y: 280 }
+        }
+      ]
+    }
+  },
+  {
+    id: 'security-studio',
+    teamName: 'Cybersecurity Swarm',
+    teamType: 'Security Audit',
+    teamDescription: 'A defensive and offensive cybersecurity audit team specializing in code analysis, threat modeling, and compliance.',
+    color: '#EF4444',
+    outputType: 'text',
+    outputModel: DEFAULT_MODELS.text,
+    outputAutoApprove: false,
+    user: { index: 0, model: 'Human', position: { x: 0, y: 0 } },
+    leadAgent: {
+      id: 'security-architect',
+      index: 1,
+      name: 'Security Architect',
+      description: 'Orchestrates threat modeling, designs secure patterns, and reviews systemic vulnerability remediations.',
+      color: '#EF4444',
+      model: DEFAULT_MODELS.text,
+      humanInTheLoop: true,
+      skillIds: ['critical-reviewer'],
+      position: { x: 0, y: 130 },
+      subagents: [
+        {
+          id: 'penetration-tester',
+          index: 2,
+          name: 'Pentester',
+          description: 'Audits source code for injection bugs, memory leaks, and authorization bypass vulnerabilities.',
+          color: '#F97316',
+          model: DEFAULT_MODELS.text,
+          skillIds: ['code-review'],
+          position: { x: -200, y: 280 }
+        },
+        {
+          id: 'appsec-engineer',
+          index: 3,
+          name: 'AppSec Engineer',
+          description: 'Secures web routes, API requests, CORS policies, and runs dependency vulnerability checks.',
+          color: '#3B82F6',
+          model: DEFAULT_MODELS.text,
+          position: { x: 0, y: 280 }
+        },
+        {
+          id: 'compliance-auditor',
+          index: 4,
+          name: 'Compliance Auditor',
+          description: 'Audits deliverables against SOC2, OWASP Top 10, and ISO 27001 requirements.',
+          color: '#64748B',
+          model: DEFAULT_MODELS.text,
+          skillIds: ['fact-checker'],
+          position: { x: 200, y: 280 }
         }
       ]
     }

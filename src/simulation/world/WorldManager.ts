@@ -51,7 +51,7 @@ export class WorldManager {
             // Check if mesh name starts with "colored" to apply thematic color
             const isColoredMesh = name.startsWith('colored');
 
-            mesh.material = new THREE.MeshStandardNodeMaterial({
+            mesh.material = new THREE.MeshStandardMaterial({
               color: isColoredMesh ? themeColor : oldMat.color,
               map: oldMat.map,
               roughness: 1,

@@ -38,7 +38,7 @@ const AlertBubble: React.FC<AlertBubbleProps> = ({ icon, position, visible, colo
       }}
     >
       <div
-        className={`bg-darkDelegation/90 backdrop-blur-md p-1.5 rounded-full border border-white/10 shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform ${onClick ? 'hover:border-white/30' : ''}`}
+        className={`bg-ink/90 backdrop-blur-md p-1.5 rounded-full border border-white/10 shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform ${onClick ? 'hover:border-white/30' : ''}`}
         style={{ color }}
       >
         {icon}
@@ -173,7 +173,7 @@ const UIOverlay: React.FC = () => {
                 transform: 'translate(-50%, -100%) translateY(-10px)'
               }}
             >
-              <div className="bg-darkDelegation/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+              <div className="bg-ink/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
                 <div
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: selectedAgent.color }}
@@ -221,7 +221,7 @@ const UIOverlay: React.FC = () => {
                 transform: 'translate(-50%, -100%) translateY(-10px)'
               }}
             >
-              <div className="bg-darkDelegation/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+              <div className="bg-ink/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
                 <div
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: hoveredAgent.color }}
@@ -268,7 +268,7 @@ const UIOverlay: React.FC = () => {
             transform: 'translate(-50%, -100%) translateY(-10px)'
           }}
         >
-          <div className="bg-darkDelegation/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-ink/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
             <span className="text-[10px] font-black uppercase tracking-widest text-white">{hoveredPoiLabel}</span>
           </div>
         </div>

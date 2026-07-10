@@ -42,20 +42,9 @@ AGORA drives its agent society with **Qwen** models via **DashScope's OpenAI-com
 
 Configure your provider credentials via environment before running `npm run dev`.
 
-## Credits & Provenance
-
-AGORA stands on open work, and credits it openly.
-
-- **UI / 3D shell — [the-delegation](https://github.com/arturitu/the-delegation)** by **Arturo Paracuellos (unboring.net)**. The source code is **MIT-licensed** and AGORA's interface and 3D scaffolding build directly on it.
-- **3D models & assets** (`public/models/*.glb` and textures) are **CC BY-NC 4.0** (© Arturo Paracuellos) — **non-commercial**. They ship here as **placeholders** and are flagged for replacement with original/CC0 assets before any commercial use. See [`public/models/README.txt`](public/models/README.txt).
-- Owner's own building blocks: **swarmpilot** (parallel execution), **Self-heal-Runtime** (worker self-heal), and **queue-cure-server** (realtime).
-
-See [`NOTICE.md`](NOTICE.md) for the full attribution notice.
-
 ## License
 
-- **Code:** MIT. AGORA's original code © 2026 Ritesh-Root; upstream the-delegation code © Arturo Paracuellos. See [`LICENSE`](LICENSE).
-- **Bundled 3D assets:** **CC BY-NC 4.0** (© Arturo Paracuellos) — non-commercial. These remain under their original license and **must be replaced before any commercial submission, release, or distribution.**
+Code is **MIT** — see [`LICENSE`](LICENSE). Some bundled UI scaffolding and 3D assets carry third-party licenses (MIT / CC BY-NC 4.0) recorded in [`NOTICE.md`](NOTICE.md); the bundled 3D models are **non-commercial** placeholders to be replaced before any commercial release.
 
 ---
 

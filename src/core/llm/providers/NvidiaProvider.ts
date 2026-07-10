@@ -78,6 +78,9 @@ export class NvidiaProvider implements LLMProvider {
       model: modelName,
       messages: requestMessages,
       max_tokens: 8192,
+      // qwen3.5 NIM backends 500 ("unit variant") unless max_completion_tokens is present;
+      // other NIM models tolerate both, so always send both.
+      max_completion_tokens: 8192,
       temperature: 1,
       top_p: 0.95,
       stream: false,
@@ -88,17 +91,35 @@ export class NvidiaProvider implements LLMProvider {
       payload.tool_choice = 'auto';
     }
 
-    const response = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    if (modelName.startsWith('qwen/')) {
+      // Without this, qwen3.5 NIM reasons for minutes and can return empty content.
+      payload.chat_template_kwargs = { thinking: false };
+    }
 
-    const data = await response.json().catch(() => null);
+    const isBrowser = typeof window !== 'undefined';
+    const fetchUrl = isBrowser ? '/api/cors-proxy' : this.baseUrl;
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.apiKey}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    };
+    if (isBrowser) {
+      headers['X-Target-URL'] = this.baseUrl;
+    }
+
+    // NIM's qwen3.5 pool intermittently 500s on identical requests — retry transient 5xx.
+    let response!: Response;
+    let data: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      response = await fetch(fetchUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+      data = await response.json().catch(() => null);
+      if (response.ok || response.status < 500 || attempt === 3) break;
+      await new Promise((r) => setTimeout(r, attempt * 1500));
+    }
 
     if (!response.ok) {
       const detail = data ? JSON.stringify(data) : response.statusText;

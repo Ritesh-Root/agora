@@ -131,11 +131,11 @@ const ChatPanel: React.FC = () => {
                   style={msg.role === 'user' ? {
                     backgroundColor: USER_COLOR_LIGHT,
                     borderColor: USER_COLOR_SOFT,
-                    color: '#27272a' // text-darkDelegation
+                    color: '#27272a' // text-ink
                   } : {
                     backgroundColor: '#fafafa', // bg-zinc-50
                     borderColor: '#f4f4f5', // border-zinc-100
-                    color: '#27272a' // text-darkDelegation
+                    color: '#27272a' // text-ink
                   }}
                 >
                   {msg.role === 'assistant' ? (
@@ -163,7 +163,7 @@ const ChatPanel: React.FC = () => {
                           {coreStore.tasks.find(t => t.id === msg.metadata.reviewTaskId)?.status === 'on_hold' && (
                             <button
                               onClick={() => setActiveAuditTaskId(msg.metadata.reviewTaskId)}
-                              className="flex-1 min-w-[120px] px-4 py-2 bg-darkDelegation text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-black active:scale-95 transition-all shadow-sm whitespace-nowrap"
+                              className="flex-1 min-w-[120px] px-4 py-2 bg-ink text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-black active:scale-95 transition-all shadow-sm whitespace-nowrap"
                             >
                               Review Task
                             </button>

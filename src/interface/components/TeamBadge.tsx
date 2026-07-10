@@ -21,7 +21,7 @@ export const TeamBadge: React.FC<TeamBadgeProps> = ({ system }) => {
         </span>
       </div>
       <div className="flex flex-col items-start">
-        <span className="text-sm font-black text-darkDelegation leading-tight">
+        <span className="text-sm font-black text-ink leading-tight">
           {system.teamName}
         </span>
         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-tight">

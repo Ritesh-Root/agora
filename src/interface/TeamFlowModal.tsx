@@ -91,7 +91,7 @@ const TeamFlowModal: React.FC<TeamFlowModalProps> = ({ isOpen, onClose, system }
             onClick={onClose}
             className="p-2 hover:bg-zinc-100 rounded-xl transition-colors group"
           >
-            <X className="w-6 h-6 text-zinc-400 group-hover:text-darkDelegation" />
+            <X className="w-6 h-6 text-zinc-400 group-hover:text-ink" />
           </button>
         </div>
 

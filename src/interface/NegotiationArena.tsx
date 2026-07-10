@@ -63,9 +63,9 @@ export const NegotiationArena: React.FC<{ onClose: () => void }> = ({ onClose })
         {/* Header */}
         <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Scale size={18} className="text-darkDelegation" />
+            <Scale size={18} className="text-ink" />
             <div>
-              <h2 className="font-black text-darkDelegation uppercase tracking-tight text-sm leading-none">Negotiation Arena</h2>
+              <h2 className="font-black text-ink uppercase tracking-tight text-sm leading-none">Negotiation Arena</h2>
               <p className="text-[10px] text-zinc-400 font-medium mt-0.5">Agents debate · a Referee resolves or escalates</p>
             </div>
           </div>
@@ -126,9 +126,9 @@ export const NegotiationArena: React.FC<{ onClose: () => void }> = ({ onClose })
                 <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Referee scores</p>
                 {result.scores.map((sc) => (
                   <div key={sc.agent} className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-darkDelegation w-20 truncate shrink-0">{sc.agent}</span>
+                    <span className="text-[11px] font-bold text-ink w-20 truncate shrink-0">{sc.agent}</span>
                     <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-darkDelegation rounded-full" style={{ width: `${sc.score}%` }} />
+                      <div className="h-full bg-ink rounded-full" style={{ width: `${sc.score}%` }} />
                     </div>
                     <span className="text-[10px] font-mono text-zinc-500 w-8 text-right">{sc.score}</span>
                   </div>
@@ -143,7 +143,7 @@ export const NegotiationArena: React.FC<{ onClose: () => void }> = ({ onClose })
                     <p className="text-[9px] font-black uppercase tracking-widest text-zinc-300">Round {round}</p>
                     {result.transcript.filter((t) => t.round === round).map((t, i) => (
                       <div key={i} className="p-2.5 bg-zinc-50 border border-zinc-100 rounded-xl">
-                        <span className="text-[11px] font-black text-darkDelegation">{t.agent}</span>
+                        <span className="text-[11px] font-black text-ink">{t.agent}</span>
                         <p className="text-[11px] text-zinc-600 leading-snug mt-0.5">{t.argument}</p>
                       </div>
                     ))}
@@ -159,7 +159,7 @@ export const NegotiationArena: React.FC<{ onClose: () => void }> = ({ onClose })
           <button
             onClick={run}
             disabled={!canRun}
-            className="w-full py-3 bg-darkDelegation hover:bg-black text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-ink hover:bg-black text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {running ? <><Loader2 size={15} className="animate-spin" /> Debating…</> : <><Scale size={15} /> Run debate</>}
           </button>

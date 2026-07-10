@@ -79,7 +79,7 @@ ${JSON.stringify(entry.raw, null, 2)}
                             <div className="flex flex-col gap-1 overflow-hidden">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: agent?.color ?? '#ccc' }} />
-                                    <span className="text-[10px] font-black text-darkDelegation uppercase tracking-widest leading-none truncate">
+                                    <span className="text-[10px] font-black text-ink uppercase tracking-widest leading-none truncate">
                                         {agent?.name}
                                     </span>
                                 </div>
@@ -217,12 +217,12 @@ ${JSON.stringify(entry.raw, null, 2)}
                                                     {m.tool_calls && m.tool_calls.length > 0 && (
                                                         <div className="space-y-2 mt-2">
                                                             {m.tool_calls.map((tc: any, idx: number) => (
-                                                                <div key={idx} className="bg-darkDelegation rounded-lg overflow-hidden border border-darkDelegation shadow-lg">
-                                                                    <div className="bg-darkDelegation px-2.5 py-1.5 flex items-center justify-between">
+                                                                <div key={idx} className="bg-ink rounded-lg overflow-hidden border border-ink shadow-lg">
+                                                                    <div className="bg-ink px-2.5 py-1.5 flex items-center justify-between">
                                                                         <span className="text-[9px] font-black text-emerald-400 font-mono tracking-wider">{tc.function?.name}</span>
                                                                         <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">Call</span>
                                                                     </div>
-                                                                    <div className="p-2.5 bg-darkDelegation/50">
+                                                                    <div className="p-2.5 bg-ink/50">
                                                                         <pre className="text-[9px] text-zinc-300 font-mono wrap-break-word whitespace-pre-wrap">
                                                                             {tc.function?.arguments}
                                                                         </pre>
@@ -269,18 +269,18 @@ ${JSON.stringify(entry.raw, null, 2)}
                                                 let args: Record<string, unknown> | null = null;
                                                 try { args = JSON.parse(tc.function?.arguments ?? '{}'); } catch { args = (tc as any).args ?? null; }
                                                 return (
-                                                    <div key={i} className="bg-darkDelegation rounded-lg overflow-hidden border border-darkDelegation shadow-lg">
-                                                        <div className="bg-darkDelegation px-2.5 py-1.5 flex items-center justify-between">
+                                                    <div key={i} className="bg-ink rounded-lg overflow-hidden border border-ink shadow-lg">
+                                                        <div className="bg-ink px-2.5 py-1.5 flex items-center justify-between">
                                                             <span className="text-[10px] font-black text-emerald-400 font-mono tracking-wider">{name}</span>
                                                             <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">Arguments</span>
                                                         </div>
-                                                        <div className="p-2.5 bg-darkDelegation/50">
+                                                        <div className="p-2.5 bg-ink/50">
                                                             {args && Object.keys(args).length > 0 ? (
                                                                 <div className="space-y-1.5">
                                                                     {Object.entries(args).map(([key, value]) => (
                                                                         <div key={key} className="flex flex-col gap-0.5">
                                                                             <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">{key}</span>
-                                                                            <div className="text-[9px] text-zinc-300 font-mono bg-darkDelegation/50 p-1.5 rounded border border-zinc-700/50 wrap-break-word whitespace-pre-wrap">
+                                                                            <div className="text-[9px] text-zinc-300 font-mono bg-ink/50 p-1.5 rounded border border-zinc-700/50 wrap-break-word whitespace-pre-wrap">
                                                                                 {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
                                                                             </div>
                                                                         </div>
@@ -311,7 +311,7 @@ ${JSON.stringify(entry.raw, null, 2)}
                                             <CopyButton text={JSON.stringify(entry.raw, null, 2)} />
                                         </div>
                                     </summary>
-                                    <pre className="mt-1.5 text-[9px] bg-darkDelegation text-zinc-400 p-2 rounded leading-relaxed whitespace-pre overflow-x-auto font-mono border border-darkDelegation">
+                                    <pre className="mt-1.5 text-[9px] bg-ink text-zinc-400 p-2 rounded leading-relaxed whitespace-pre overflow-x-auto font-mono border border-ink">
                                         {JSON.stringify(entry.raw, null, 2)}
                                     </pre>
                                 </details>
@@ -370,7 +370,7 @@ ${JSON.stringify(entry.raw, null, 2)}
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `the-delegation-technical-logs-${Date.now()}.txt`;
+        a.download = `agora-technical-logs-${Date.now()}.txt`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -420,8 +420,8 @@ ${JSON.stringify(entry.raw, null, 2)}
                         <button
                             onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
                             className={`p-1.5 rounded transition-colors cursor-pointer ${isFilterMenuOpen || logFilterAgentIndex !== null
-                                ? 'bg-darkDelegation text-white'
-                                : 'text-zinc-400 hover:text-darkDelegation hover:bg-zinc-50'
+                                ? 'bg-ink text-white'
+                                : 'text-zinc-400 hover:text-ink hover:bg-zinc-50'
                                 }`}
                             title="Filter by agent"
                         >
@@ -440,10 +440,10 @@ ${JSON.stringify(entry.raw, null, 2)}
                                             setLogOpen(true, null);
                                             setIsFilterMenuOpen(false);
                                         }}
-                                        className={`w-full px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-zinc-50 transition-colors ${logFilterAgentIndex === null ? 'text-darkDelegation' : 'text-zinc-400'
+                                        className={`w-full px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-zinc-50 transition-colors ${logFilterAgentIndex === null ? 'text-ink' : 'text-zinc-400'
                                             }`}
                                     >
-                                        <div className={`w-2 h-2 rounded-full ${logFilterAgentIndex === null ? 'bg-darkDelegation' : 'bg-transparent border border-zinc-200'}`} />
+                                        <div className={`w-2 h-2 rounded-full ${logFilterAgentIndex === null ? 'bg-ink' : 'bg-transparent border border-zinc-200'}`} />
                                         All Agents
                                     </button>
                                     <div className="h-px bg-zinc-50 my-1" />
@@ -454,7 +454,7 @@ ${JSON.stringify(entry.raw, null, 2)}
                                                 setLogOpen(true, agent.index);
                                                 setIsFilterMenuOpen(false);
                                             }}
-                                            className={`w-full px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-zinc-50 transition-colors ${logFilterAgentIndex === agent.index ? 'text-darkDelegation' : 'text-zinc-400'
+                                            className={`w-full px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-zinc-50 transition-colors ${logFilterAgentIndex === agent.index ? 'text-ink' : 'text-zinc-400'
                                                 }`}
                                         >
                                             <div
@@ -472,7 +472,7 @@ ${JSON.stringify(entry.raw, null, 2)}
                     {activeTab === 'technical' && debugEntries.length > 0 && (
                         <button
                             onClick={handleDownloadAll}
-                            className="text-zinc-400 hover:text-darkDelegation transition-colors p-1 rounded hover:bg-zinc-50 cursor-pointer"
+                            className="text-zinc-400 hover:text-ink transition-colors p-1 rounded hover:bg-zinc-50 cursor-pointer"
                             title="Download all as .txt"
                         >
                             <Download size={14} />
@@ -485,14 +485,14 @@ ${JSON.stringify(entry.raw, null, 2)}
             <div className="flex border-b border-zinc-100 bg-zinc-50/30">
                 <button
                     onClick={() => setActiveTab('activity')}
-                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'activity' ? 'bg-white border-b-2 border-darkDelegation text-darkDelegation' : 'text-zinc-400 hover:text-zinc-600'
+                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'activity' ? 'bg-white border-b-2 border-ink text-ink' : 'text-zinc-400 hover:text-zinc-600'
                         }`}
                 >
                     Activity
                 </button>
                 <button
                     onClick={() => setActiveTab('technical')}
-                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'technical' ? 'bg-white border-b-2 border-darkDelegation text-darkDelegation' : 'text-zinc-400 hover:text-zinc-600'
+                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'technical' ? 'bg-white border-b-2 border-ink text-ink' : 'text-zinc-400 hover:text-zinc-600'
                         }`}
                 >
                     Technical
@@ -517,7 +517,7 @@ ${JSON.stringify(entry.raw, null, 2)}
                                                 className="w-1.5 h-1.5 rounded-full shadow-sm"
                                                 style={{ backgroundColor: agent?.color ?? '#e4e4e7' }}
                                             />
-                                            <span className="text-[10px] font-black text-darkDelegation uppercase tracking-widest leading-none">
+                                            <span className="text-[10px] font-black text-ink uppercase tracking-widest leading-none">
                                                 {agent?.name ?? 'System'}
                                             </span>
                                         </div>

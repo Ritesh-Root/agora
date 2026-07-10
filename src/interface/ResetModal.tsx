@@ -1,5 +1,6 @@
 import { AlertTriangle, RefreshCcw, X } from 'lucide-react';
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 interface ResetModalProps {
   isOpen: boolean;
@@ -10,8 +11,8 @@ interface ResetModalProps {
 const ResetModal: React.FC<ResetModalProps> = ({ isOpen, onClose, onConfirm }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div
         onClick={onClose}
         className="absolute inset-0 bg-white/60 backdrop-blur-sm"
@@ -25,7 +26,7 @@ const ResetModal: React.FC<ResetModalProps> = ({ isOpen, onClose, onConfirm }) =
               <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shadow-sm shadow-red-100">
                 <AlertTriangle size={32} strokeWidth={2.5} />
               </div>
-              <h3 className="text-2xl font-black text-darkDelegation leading-tight">
+              <h3 className="text-2xl font-black text-ink leading-tight">
                 Start New Project?
               </h3>
             </div>
@@ -48,7 +49,7 @@ const ResetModal: React.FC<ResetModalProps> = ({ isOpen, onClose, onConfirm }) =
                 onConfirm();
                 onClose();
               }}
-              className="w-full py-4 bg-darkDelegation hover:bg-darkDelegation text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-4 bg-ink hover:bg-ink text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <RefreshCcw size={14} />
               Yes, Reset Everything
@@ -62,7 +63,8 @@ const ResetModal: React.FC<ResetModalProps> = ({ isOpen, onClose, onConfirm }) =
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

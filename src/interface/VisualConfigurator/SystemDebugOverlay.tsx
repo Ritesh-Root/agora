@@ -33,7 +33,7 @@ export const SystemDebugOverlay: React.FC<SystemDebugOverlayProps> = ({ system, 
             <div className="flex items-center gap-3">
               <Code size={14} className="text-zinc-400" />
               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                System Debug Data — <span className="text-darkDelegation">{system.teamName || 'Untitled'}</span>
+                System Debug Data — <span className="text-ink">{system.teamName || 'Untitled'}</span>
               </h3>
             </div>
 
@@ -47,7 +47,7 @@ export const SystemDebugOverlay: React.FC<SystemDebugOverlayProps> = ({ system, 
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 px-2 hover:bg-zinc-200 rounded-lg text-zinc-400 hover:text-darkDelegation transition-colors"
+                className="p-1 px-2 hover:bg-zinc-200 rounded-lg text-zinc-400 hover:text-ink transition-colors"
                 title="Close overlay"
               >
                 <X size={16} />
@@ -55,7 +55,7 @@ export const SystemDebugOverlay: React.FC<SystemDebugOverlayProps> = ({ system, 
             </div>
           </div>
 
-          <pre className="flex-1 overflow-auto p-6 text-[11px] font-mono whitespace-pre-wrap bg-darkDelegation text-green-400 selection:bg-green-500/20">
+          <pre className="flex-1 overflow-auto p-6 text-[11px] font-mono whitespace-pre-wrap bg-ink text-green-400 selection:bg-green-500/20">
             {JSON.stringify(system, null, 2)}
           </pre>
 

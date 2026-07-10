@@ -45,7 +45,7 @@ const AgentStatusPanel: React.FC<AgentStatusPanelProps> = ({ agentIndex }) => {
             <div className="h-px flex-1 bg-zinc-100" />
           </div>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-zinc-50 rounded-lg border border-zinc-100/60 font-mono">
-            <p className="text-[11px] font-bold text-darkDelegation uppercase tracking-tighter">
+            <p className="text-[11px] font-bold text-ink uppercase tracking-tighter">
               {agent.model}
             </p>
           </div>
@@ -76,7 +76,7 @@ const AgentStatusPanel: React.FC<AgentStatusPanelProps> = ({ agentIndex }) => {
             </span>
             Doing Now
           </p>
-          <p className="text-sm text-darkDelegation leading-snug font-bold">
+          <p className="text-sm text-ink leading-snug font-bold">
             "{activeTask.title}"
           </p>
         </div>

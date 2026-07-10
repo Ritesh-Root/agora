@@ -77,12 +77,12 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
 
             <div className="flex flex-col">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-black text-darkDelegation uppercase tracking-widest">{agent?.name}</span>
+                <span className="text-sm font-black text-ink uppercase tracking-widest">{agent?.name}</span>
                 {!isViewMode && (
                   <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ backgroundColor: USER_COLOR_LIGHT, color: USER_COLOR }}>Requires Review</span>
                 )}
               </div>
-              <h2 className="text-2xl font-semibold text-darkDelegation tracking-tight leading-tight">
+              <h2 className="text-2xl font-semibold text-ink tracking-tight leading-tight">
                 {task.title}
               </h2>
               {isViewMode && (
@@ -98,7 +98,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
             onClick={onClose}
             className="p-3 hover:bg-zinc-100 rounded-2xl transition-all group"
           >
-            <X size={24} className="text-zinc-300 group-hover:text-darkDelegation transition-colors" />
+            <X size={24} className="text-zinc-300 group-hover:text-ink transition-colors" />
           </button>
         </div>
 
@@ -111,7 +111,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-1 h-4 bg-darkDelegation rounded-full" />
+                    <div className="w-1 h-4 bg-ink rounded-full" />
                     <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                       {selectedRevisionIndex !== null ? `Revision V${selectedRevisionIndex + 1}` : (isViewMode ? 'Final Output' : 'Current Proposal')}
                     </h3>
@@ -119,14 +119,14 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
                   {selectedRevisionIndex !== null && (
                     <button
                       onClick={() => setSelectedRevisionIndex(null)}
-                      className="text-[9px] font-black uppercase text-zinc-400 hover:text-darkDelegation transition-colors"
+                      className="text-[9px] font-black uppercase text-zinc-400 hover:text-ink transition-colors"
                     >
                       Back to latest
                     </button>
                   )}
                 </div>
                 <div className="p-8 bg-zinc-50/50 rounded-3xl border border-zinc-100 min-h-[350px] shadow-inner">
-                  <div className="markdown-content text-darkDelegation text-sm leading-relaxed">
+                  <div className="markdown-content text-ink text-sm leading-relaxed">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {selectedRevisionIndex !== null
                         ? task.revisions[selectedRevisionIndex].output
@@ -154,8 +154,8 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
                       className={`
                         w-full text-left p-2.5 rounded-xl transition-all border group/rev
                         ${selectedRevisionIndex === idx
-                          ? 'bg-darkDelegation border-darkDelegation text-white shadow-xl'
-                          : 'bg-white border-zinc-100 text-darkDelegation hover:border-zinc-300 hover:bg-zinc-50'}
+                          ? 'bg-ink border-ink text-white shadow-xl'
+                          : 'bg-white border-zinc-100 text-ink hover:border-zinc-300 hover:bg-zinc-50'}
                       `}
                     >
                       <div className="flex items-center justify-between mb-1">
@@ -204,7 +204,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Describe what needs to be changed before rejecting..."
-              className="w-full bg-zinc-50 border border-zinc-100 rounded-xl p-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-darkDelegation/5 transition-all resize-none h-20 placeholder:text-zinc-300 placeholder:italic"
+              className="w-full bg-zinc-50 border border-zinc-100 rounded-xl p-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ink/5 transition-all resize-none h-20 placeholder:text-zinc-300 placeholder:italic"
             />
           </div>
         )}
@@ -214,7 +214,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
           {(isViewMode || selectedRevisionIndex !== null) ? (
             <button
               onClick={selectedRevisionIndex !== null ? () => setSelectedRevisionIndex(null) : onClose}
-              className="h-12 px-10 bg-darkDelegation text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-black active:scale-95 flex items-center gap-2 shadow-xl shadow-darkDelegation/10"
+              className="h-12 px-10 bg-ink text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-black active:scale-95 flex items-center gap-2 shadow-xl shadow-ink/10"
             >
               {selectedRevisionIndex !== null ? 'Show Active Review' : 'Close Viewer'}
             </button>
@@ -236,7 +236,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({ taskId, isOpen, onClose,
 
               <button
                 onClick={handleApprove}
-                className="h-12 px-10 bg-darkDelegation text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-black active:scale-95 flex items-center gap-2 shadow-xl shadow-darkDelegation/10"
+                className="h-12 px-10 bg-ink text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-black active:scale-95 flex items-center gap-2 shadow-xl shadow-ink/10"
               >
                 <CheckCircle2 size={14} strokeWidth={3} />
                 Approve Task

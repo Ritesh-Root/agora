@@ -38,6 +38,7 @@ export type TaskStatus = 'done' | 'escalated';
 export interface TaskResult {
   id: string;
   title: string;
+  role: string;
   status: TaskStatus;
   output: string;
   /** 1 = first try; 2 = one self-heal retry. */
@@ -49,6 +50,8 @@ export interface TaskResult {
 export interface SocietyResult {
   brief: string;
   tasks: TaskResult[];
+  /** Lead-merged final deliverable (empty if every worker failed). */
+  synthesis: string;
   metrics: {
     taskCount: number;
     /** Peak simultaneous workers — proves real parallelism. */
@@ -63,6 +66,7 @@ export interface OrchestratorOptions {
   models?: { manager?: string; worker?: string };
   /** Returns false to mark a worker output invalid (triggers self-heal). */
   isValidOutput?: (task: SocietyTask, output: string) => boolean;
+  onEvent?: (event: { type: string; [key: string]: any }) => void;
 }
 
 const DEFAULT_MANAGER_MODEL = 'qwen-max';
@@ -115,6 +119,8 @@ export function parsePlan(content: string | null): SocietyTask[] {
     .trim()
     .replace(/^```(?:json)?/i, '')
     .replace(/```$/, '')
+    // qwen3.5 sometimes emits trailing commas, which JSON.parse rejects
+    .replace(/,\s*([}\]])/g, '$1')
     .trim();
 
   let parsed: unknown;
@@ -138,8 +144,10 @@ async function runWorker(
   model: string,
   isValid: (task: SocietyTask, output: string) => boolean,
   tracker: ReturnType<typeof makeConcurrencyTracker>,
+  onEvent?: (event: { type: string; [key: string]: any }) => void,
 ): Promise<TaskResult> {
   tracker.enter();
+  onEvent?.({ type: 'task-start', taskId: task.id, title: task.title, role: task.role });
   try {
     let attempts = 0;
     let output = '';
@@ -147,6 +155,9 @@ async function runWorker(
 
     while (attempts < MAX_ATTEMPTS) {
       attempts += 1;
+      if (attempts > 1) {
+        onEvent?.({ type: 'task-healing', taskId: task.id, title: task.title, attempt: attempts });
+      }
       const system = `You are a ${task.role} worker in an agent society. Complete the task and respond with the deliverable only.`;
       const userContent = attempts === 1
         ? task.prompt
@@ -161,9 +172,11 @@ async function runWorker(
       output = res.content ?? '';
 
       if (isValid(task, output)) {
+        onEvent?.({ type: 'task-done', taskId: task.id, title: task.title, status: 'done', output, attempts, healed: attempts > 1 });
         return {
           id: task.id,
           title: task.title,
+          role: task.role,
           status: 'done',
           output,
           attempts,
@@ -174,9 +187,11 @@ async function runWorker(
     }
 
     // Retries exhausted → escalate to human-in-the-loop.
+    onEvent?.({ type: 'task-done', taskId: task.id, title: task.title, status: 'escalated', output, attempts, healed: false });
     return {
       id: task.id,
       title: task.title,
+      role: task.role,
       status: 'escalated',
       output,
       attempts,
@@ -197,6 +212,7 @@ export async function runSociety(
   const managerModel = options.models?.manager ?? DEFAULT_MANAGER_MODEL;
   const workerModel = options.models?.worker ?? DEFAULT_WORKER_MODEL;
   const isValid = options.isValidOutput ?? defaultIsValid;
+  const onEvent = options.onEvent;
 
   // 1. Manager decomposes the brief.
   const managerSystem =
@@ -214,12 +230,40 @@ export async function runSociety(
   // 2. Workers execute in parallel (each can self-heal once).
   const tracker = makeConcurrencyTracker();
   const results = await Promise.all(
-    tasks.map((task) => runWorker(task, provider, workerModel, isValid, tracker)),
+    tasks.map((task) => runWorker(task, provider, workerModel, isValid, tracker, onEvent)),
   );
+
+  // 3. Lead merges worker outputs into one coherent deliverable.
+  let synthesis = '';
+  const doneOutputs = results.filter((r) => r.status === 'done' && r.output);
+  if (doneOutputs.length > 0) {
+    onEvent?.({ type: 'society-synthesizing' });
+    try {
+      const leadSystem =
+        'You are the Lead of an agent society. Merge the worker outputs into ONE coherent, ' +
+        'complete, non-redundant deliverable that fully answers the brief. Respond with the ' +
+        'final deliverable only.';
+      const leadRes = await provider.generateCompletion(
+        [{
+          role: 'user',
+          content: `Brief:\n${brief}\n\nWorker outputs:\n${doneOutputs
+            .map((r) => `### ${r.title} (${r.role})\n${r.output}`)
+            .join('\n\n')}`,
+        }],
+        undefined,
+        leadSystem,
+        managerModel,
+      );
+      synthesis = leadRes.content ?? '';
+    } catch {
+      // synthesis is best-effort; the task outputs still stand on their own
+    }
+  }
 
   return {
     brief,
     tasks: results,
+    synthesis,
     metrics: {
       taskCount: tasks.length,
       maxConcurrency: tracker.peak(),

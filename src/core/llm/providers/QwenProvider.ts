@@ -88,13 +88,20 @@ export class QwenProvider implements LLMProvider {
       payload.tool_choice = 'auto';
     }
 
-    const response = await fetch(this.baseUrl, {
+    const isBrowser = typeof window !== 'undefined';
+    const fetchUrl = isBrowser ? '/api/cors-proxy' : this.baseUrl;
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.apiKey}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    };
+    if (isBrowser) {
+      headers['X-Target-URL'] = this.baseUrl;
+    }
+
+    const response = await fetch(fetchUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 

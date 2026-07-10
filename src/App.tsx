@@ -12,6 +12,8 @@ import InspectorPanel from './interface/InspectorPanel';
 import JoinModal from './interface/JoinModal';
 import { KanbanPanel } from './interface/KanbanPanel';
 import { OutputReviewModal } from './interface/OutputReviewModal';
+import { SocietyPanel } from './interface/SocietyPanel';
+import { BenchmarkPanel } from './interface/BenchmarkPanel';
 import SimulationView from './interface/SimulationView';
 import { VisualConfigurator } from './interface/VisualConfigurator/VisualConfigurator';
 import { useRosterStore } from './network/RosterStore';
@@ -133,6 +135,8 @@ const App: React.FC = () => {
         {/* Final output — fixed viewport overlay */}
         <FinalOutputModal />
         <OutputReviewModal />
+        <SocietyPanel />
+        <BenchmarkPanel />
       </div>
     </SceneContext.Provider>
   );

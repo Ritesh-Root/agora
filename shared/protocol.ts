@@ -22,12 +22,43 @@ export interface RemoteNpcState {
   speaking: boolean;
 }
 
+export interface SocietyResultWire {
+  brief: string;
+  tasks: Array<{
+    id: string;
+    title: string;
+    role: string;
+    status: 'done' | 'escalated';
+    output: string;
+    attempts: number;
+    healed: boolean;
+  }>;
+  negotiation?: {
+    topic: string;
+    rounds: number;
+    outcome: 'consensus' | 'escalate';
+    winner?: string;
+    synthesis: string;
+    scores: Array<{ agent: string; score: number; reason: string }>;
+    transcript: Array<{ round: number; agent: string; argument: string }>;
+  };
+  metrics: {
+    taskCount: number;
+    maxConcurrency: number;
+    escalated: number;
+    healed: number;
+    wallMs: number;
+  };
+}
+
 export type ClientMessage =
   | { type: 'join'; name: string; color: string }
   | { type: 'player-state'; pos: [number, number, number]; vel: [number, number]; animState: string; speaking: boolean }
   | { type: 'npc-state'; npcs: RemoteNpcState[] }
   | { type: 'leave' }
-  | { type: 'register-cabins'; cabinPoiIds: string[] };
+  | { type: 'register-cabins'; cabinPoiIds: string[] }
+  | { type: 'run-society'; brief: string }
+  | { type: 'run-benchmark'; brief: string };
 
 export type ServerMessage =
   | { type: 'joined'; me: PlayerInfo; roster: PlayerInfo[] }
@@ -36,4 +67,10 @@ export type ServerMessage =
   | { type: 'roster-update'; roster: PlayerInfo[] }
   | { type: 'player-state'; playerId: string; pos: [number, number, number]; vel: [number, number]; animState: string; speaking: boolean }
   | { type: 'npc-state'; npcs: RemoteNpcState[] }
-  | { type: 'player-left'; playerId: string };
+  | { type: 'player-left'; playerId: string }
+  | { type: 'society-started'; brief: string; taskCount: number }
+  | { type: 'society-task-update'; taskId: string; title: string; role: string; status: 'running' | 'done' | 'healing' | 'escalated'; output?: string; attempt?: number }
+  | { type: 'society-negotiation'; topic: string; round: number; agent: string; argument: string; scores?: Array<{ agent: string; score: number; reason: string }> }
+  | { type: 'society-complete'; result: SocietyResultWire }
+  | { type: 'society-error'; error: string }
+  | { type: 'benchmark-result'; society: SocietyResultWire; single: { output: string; wallMs: number; model: string }; qualityScores: { society: number; single: number } };

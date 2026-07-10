@@ -32,8 +32,8 @@ const edgeTypes = {
 const InternalHeader = ({ onClose, system }: { onClose: () => void, system: any }) => (
   <div className="h-14 border-b border-zinc-100 bg-white flex items-center justify-between px-6 z-50 shrink-0">
     <div className="flex items-center gap-2">
-      <Settings size={18} className="text-darkDelegation" strokeWidth={2} />
-      <h2 className="text-xs font-black text-darkDelegation uppercase tracking-[0.2em] ml-2">Manage Teams</h2>
+      <Settings size={18} className="text-ink" strokeWidth={2} />
+      <h2 className="text-xs font-black text-ink uppercase tracking-[0.2em] ml-2">Manage Teams</h2>
 
       <div className="ml-4">
         <SystemDebugOverlay system={system} />
@@ -45,7 +45,7 @@ const InternalHeader = ({ onClose, system }: { onClose: () => void, system: any 
         onClick={onClose}
         className="p-2 hover:bg-zinc-100 rounded-xl transition-colors group border border-transparent hover:border-zinc-200"
       >
-        <X className="w-5 h-5 text-zinc-400 group-hover:text-darkDelegation" />
+        <X className="w-5 h-5 text-zinc-400 group-hover:text-ink" />
       </button>
     </div>
   </div>
@@ -301,7 +301,7 @@ const VisualConfiguratorContent: React.FC = () => {
                 <button
                   onClick={handleAddAgent}
                   disabled={characters.length >= MAX_AGENTS + 1}
-                  className={`flex items-center gap-2 px-8 py-3 bg-darkDelegation text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] shadow-lg shadow-black/5 transition-all ${characters.length >= MAX_AGENTS + 1
+                  className={`flex items-center gap-2 px-8 py-3 bg-ink text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] shadow-lg shadow-black/5 transition-all ${characters.length >= MAX_AGENTS + 1
                     ? 'opacity-40 cursor-not-allowed grayscale'
                     : 'hover:bg-black hover:scale-105 active:scale-95'
                     }`}

@@ -75,7 +75,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ isFloating }) => {
                   />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <h2 className="text-xl font-black text-darkDelegation leading-tight truncate">
+                  <h2 className="text-xl font-black text-ink leading-tight truncate">
                     {agent.name}
                   </h2>
                   {agent.index !== system.user.index && (
@@ -126,7 +126,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ isFloating }) => {
                       <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">Active</span>
                     </div>
                   </div>
-                  <p className="text-[12px] font-bold text-darkDelegation leading-tight mt-1.5">
+                  <p className="text-[12px] font-bold text-ink leading-tight mt-1.5">
                     {isLeadAgentIdle
                       ? "Waiting to review user brief."
                       : `${agent?.name} needs input.`}
@@ -146,7 +146,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ isFloating }) => {
                     <span style={{ color: USER_COLOR }}>Review Requested</span>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <p className="text-[12px] font-bold text-darkDelegation leading-tight">
+                    <p className="text-[12px] font-bold text-ink leading-tight">
                       {isLeadAgentIdle
                         ? "Review the user brief with the team."
                         : `I've finished the task "${tasksOnHold[0]?.title ?? 'Work'}". I've submitted my work for your review.`}
@@ -161,7 +161,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ isFloating }) => {
                     <button
                       onClick={isLeadAgentIdle ? handleStartChat : () => useUiStore.getState().setActiveAuditTaskId(tasksOnHold[0]?.id)}
                       disabled={isLeadAgentIdle ? !canChat : false}
-                      className="flex items-center justify-center gap-2 bg-darkDelegation hover:bg-black active:scale-95 disabled:opacity-50 text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm mt-1"
+                      className="flex items-center justify-center gap-2 bg-ink hover:bg-black active:scale-95 disabled:opacity-50 text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm mt-1"
                     >
                       {isLeadAgentIdle ? (
                         <>
@@ -204,7 +204,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ isFloating }) => {
                       disabled={!canChat}
                       title={!canChat ? reason : undefined}
                       className={`w-full h-10 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest ${canChat
-                          ? 'bg-darkDelegation text-white border-none shadow-md'
+                          ? 'bg-ink text-white border-none shadow-md'
                           : 'bg-zinc-50 text-zinc-300 border border-transparent cursor-not-allowed'
                         }`}
                     >
@@ -236,7 +236,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ isFloating }) => {
                 <div className="p-3 bg-white border-t border-zinc-100 shrink-0">
                   <button
                     onClick={handleEndChat}
-                    className="w-full h-10 px-4 bg-darkDelegation hover:bg-black text-white rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest shadow-md"
+                    className="w-full h-10 px-4 bg-ink hover:bg-black text-white rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest shadow-md"
                   >
                     <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                     Close Chat

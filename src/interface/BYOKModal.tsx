@@ -1,5 +1,6 @@
 import { Eye, EyeOff, Trash2, X } from 'lucide-react';
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useUiStore } from '../integration/store/uiStore';
 import { PROVIDERS, DEFAULT_PROVIDER } from '../core/llm/constants';
 import { ProviderId } from '../core/llm/types';
@@ -52,8 +53,8 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
 
   const isSaved = !!llmConfig.apiKey;
 
-  return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
       <div
         onClick={onClose}
         className="absolute inset-0 bg-white/60 backdrop-blur-xl"
@@ -72,7 +73,7 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
         <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="mb-6">
-            <h2 className="text-3xl font-black text-darkDelegation tracking-tight mb-2">
+            <h2 className="text-3xl font-black text-ink tracking-tight mb-2">
               {spec.label} API Key
             </h2>
             <p className="text-zinc-400 text-sm font-medium leading-relaxed max-w-[260px]">
@@ -89,7 +90,7 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
                 onClick={() => setProvider(p.id)}
                 className={`flex-1 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer ${
                   provider === p.id
-                    ? 'bg-darkDelegation text-white shadow'
+                    ? 'bg-ink text-white shadow'
                     : 'text-zinc-400 hover:text-zinc-600'
                 }`}
               >
@@ -140,7 +141,7 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={`Paste your ${spec.keyPlaceholder} key here`}
-                className="w-full bg-zinc-50 border border-zinc-100 rounded-3xl px-6 py-4 pr-14 text-sm text-darkDelegation font-mono placeholder:text-zinc-300 placeholder:font-sans focus:outline-none focus:border-zinc-200 transition-all shadow-sm group-hover:shadow-md"
+                className="w-full bg-zinc-50 border border-zinc-100 rounded-3xl px-6 py-4 pr-14 text-sm text-ink font-mono placeholder:text-zinc-300 placeholder:font-sans focus:outline-none focus:border-zinc-200 transition-all shadow-sm group-hover:shadow-md"
               />
               <button
                 type="button"
@@ -157,7 +158,7 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
             href={spec.consoleUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block mb-10 ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:text-darkDelegation transition-colors"
+            className="inline-block mb-10 ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:text-ink transition-colors"
           >
             Get a {spec.label.replace(/\s*\(.*\)/, '')} key ↗
           </a>
@@ -178,14 +179,15 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
             <button
               onClick={handleSave}
               disabled={!apiKey.trim()}
-              className="px-12 py-4 bg-darkDelegation text-white rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:bg-black transition-all active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-black/10"
+              className="px-12 py-4 bg-ink text-white rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:bg-black transition-all active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-black/10"
             >
               Save
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

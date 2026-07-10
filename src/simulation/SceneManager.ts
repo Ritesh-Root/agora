@@ -79,12 +79,23 @@ export class SceneManager {
     this.unsubs.push(networkClient.onMessage((msg) => this._onNetworkMessage(msg)));
   }
 
-  private showRendererError() {
+  private showRendererError(webgpuUnavailable = false) {
     const el = document.createElement('div');
-    el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;padding:24px;text-align:center;font:500 14px system-ui,sans-serif;color:#cbd5e1;background:#0c0c0d;z-index:1;';
-    el.innerHTML =
-      '<div style="font-weight:800;font-size:18px;color:#fff;">AGORA needs WebGPU or WebGL2</div>' +
-      '<div>Open this app in a recent <b>Chrome</b> or <b>Edge</b> with hardware acceleration enabled.</div>';
+    el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;padding:32px;text-align:center;font:500 14px Inter,system-ui,sans-serif;color:#52525b;background:#ffffff;z-index:1;';
+
+    if (webgpuUnavailable) {
+      const flags = '--enable-unsafe-webgpu';
+      el.innerHTML =
+        '<div style="font-weight:900;font-size:20px;color:#18181b;letter-spacing:-0.02em;">The 3D office needs WebGPU</div>' +
+        '<div style="max-width:440px;line-height:1.5;">This browser exposes no WebGPU adapter, so the GPU-accelerated agent simulation can’t run. The <b>Obsidian Graph</b> tab works without it.</div>' +
+        '<div style="max-width:460px;line-height:1.6;color:#71717a;">On Linux, relaunch Chrome with this flag (or run <b>./run-agora.sh</b> in the project):</div>' +
+        `<code style="display:block;max-width:520px;background:#f4f4f5;border:1px solid #e4e4e7;border-radius:10px;padding:10px 14px;font:600 11px ui-monospace,monospace;color:#3f3f46;word-break:break-all;">google-chrome ${flags} http://localhost:3000</code>` +
+        '<div style="font-size:12px;color:#a1a1aa;">Persistent alternative: enable <b>#enable-unsafe-webgpu</b> at <b>chrome://flags</b>. For GPU acceleration: <b>AGORA_HW=1 ./run-agora.sh</b>.</div>';
+    } else {
+      el.innerHTML =
+        '<div style="font-weight:900;font-size:20px;color:#18181b;">AGORA needs WebGPU</div>' +
+        '<div style="max-width:420px;line-height:1.5;">Open this app in a recent <b>Chrome</b> or <b>Edge</b> with hardware acceleration enabled.</div>';
+    }
     this.container.appendChild(el);
   }
 
@@ -120,16 +131,34 @@ export class SceneManager {
   }
 
   private async init() {
-    await this.engine.init();
-    if (this.isDisposed) return;
-    if (!this.engine.initialized) {
-      // No GPU backend — show a clear message instead of looping a dead renderer.
+    try {
+      await this.engine.init();
+      if (this.isDisposed) return;
+      if (!this.engine.initialized) {
+        // No GPU backend — show a clear message instead of looping a dead renderer.
+        this.showRendererError(this.engine.webgpuUnavailable);
+        return;
+      }
+    } catch (e) {
+      console.error("Engine initialization failed:", e);
       this.showRendererError();
       return;
     }
 
-    await this.worldManager.load();
-    await this.characterManager.load();
+    try {
+      await this.worldManager.load();
+      await this.characterManager.load();
+    } catch (error) {
+      console.error("ThreeJS asset loading failed:", error);
+      const el = document.createElement('div');
+      el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;padding:24px;text-align:center;font:500 14px system-ui,sans-serif;color:#ef4444;background:#0c0c0d;z-index:50;';
+      el.innerHTML =
+        '<div style="font-weight:800;font-size:18px;color:#fff;">ThreeJS Asset Loading Failed</div>' +
+        `<div style="color:#f87171;font-family:monospace;font-size:12px;margin:8px 0;">${error instanceof Error ? error.message : String(error)}</div>` +
+        '<div style="font-size:12px;color:#94a3b8;margin-top:8px;">Check your browser console and make sure the model files exist under public/models/.</div>';
+      this.container.appendChild(el);
+      return;
+    }
     if (this.isDisposed) return;
 
     const state = useUiStore.getState();

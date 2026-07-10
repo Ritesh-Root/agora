@@ -78,7 +78,7 @@ export const TeamsPanel: React.FC<TeamsPanelProps> = ({ onSelectTeam, selectedTe
       <div className="p-4 border-t border-zinc-50 bg-white">
         <button
           onClick={handleCreateNew}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-darkDelegation hover:bg-darkDelegation text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all shadow-lg shadow-black/5 active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-ink hover:bg-ink text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all shadow-lg shadow-black/5 active:scale-[0.98]"
         >
           <Plus size={14} strokeWidth={3} />
           Create New Team
