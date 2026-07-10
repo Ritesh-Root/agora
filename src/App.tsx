@@ -17,9 +17,13 @@ import { BenchmarkPanel } from './interface/BenchmarkPanel';
 import SimulationView from './interface/SimulationView';
 import { VisualConfigurator } from './interface/VisualConfigurator/VisualConfigurator';
 import { useRosterStore } from './network/RosterStore';
+import { networkClient } from './network/NetworkClient';
+import { USER_COLOR } from './theme/brand';
 import { SceneContext } from './simulation/SceneContext';
 import { SceneManager } from './simulation/SceneManager';
 
+const isStaticPreview = typeof window !== 'undefined'
+  && window.location.hostname.endsWith('.vercel.app');
 
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -27,7 +31,7 @@ const App: React.FC = () => {
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null);
   const { isLogOpen, isKanbanOpen, setIsResizing, viewMode, setViewMode } = useCoreStore();
   const rosterStatus = useRosterStore((s) => s.status);
-  const hasJoined = rosterStatus === 'connected';
+  const hasJoined = rosterStatus === 'connected' || isStaticPreview;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [kanbanHeight, setKanbanHeight] = useState(220);
@@ -75,6 +79,12 @@ const App: React.FC = () => {
         setSceneManager(null);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (isStaticPreview) {
+      networkClient.enterDemoMode('Guest', USER_COLOR);
+    }
   }, []);
 
   return (
@@ -143,4 +153,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
