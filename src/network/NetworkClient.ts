@@ -43,6 +43,32 @@ export class NetworkClient {
     useRosterStore.getState().reset();
   }
 
+  /**
+   * Lets a static frontend remain explorable when the optional relay is not
+   * available, such as a Vercel-only preview. Live multiplayer is unchanged
+   * when the relay connects normally.
+   */
+  public enterDemoMode(name = this.name || 'Guest', color = this.color || '#6366C9'): void {
+    this.manuallyClosed = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.ws?.close();
+    this.ws = null;
+
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `demo-${Date.now()}`;
+    const me = {
+      id,
+      name,
+      color,
+      slotIndex: 0,
+      cabinPoiId: null,
+      isHost: true,
+    };
+
+    this._handleMessage({ type: 'joined', me, roster: [me] });
+  }
+
   public send(msg: ClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
@@ -83,7 +109,7 @@ export class NetworkClient {
 
   private _scheduleReconnect(): void {
     if (this.reconnectAttempts >= RECONNECT_DELAYS_MS.length) {
-      useRosterStore.getState().setStatus('failed');
+      this.enterDemoMode();
       return;
     }
     const delay = RECONNECT_DELAYS_MS[this.reconnectAttempts];

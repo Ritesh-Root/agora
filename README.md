@@ -49,3 +49,9 @@ Code is **MIT** — see [`LICENSE`](LICENSE). Some bundled UI scaffolding and 3D
 ---
 
 Author: **Ritesh-Root** &lt;workstationritalks@gmail.com&gt; · https://github.com/Ritesh-Root
+
+## Acknowledgements and provenance
+
+AGORA takes inspiration from [the-delegation](https://github.com/arturitu/the-delegation.git), an open-source project by Arturo Paracuellos. We used its 3D office shell and visual starting point, including the character and office assets, under the terms recorded in [`NOTICE.md`](NOTICE.md) and [`LICENSE-ASSETS.md`](LICENSE-ASSETS.md).
+
+The agent-society architecture and the main hackathon features are AGORA's work. These include the server-side WebSocket relay, parallel orchestration, worker self-healing, Referee negotiation, the graph and benchmark views, composable skills, Qwen Cloud integration, and the related UI and protocol changes.

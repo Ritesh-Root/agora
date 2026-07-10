@@ -24,6 +24,8 @@ The process is visible in a walkable 3D office. You can see who is working, whic
 
 I built AGORA for Track 3: Agent Society because the interesting question is not only whether an AI model can answer a prompt. It is whether several specialized agents can organize their work, handle disagreement, and stay understandable to the person supervising them.
 
+AGORA takes inspiration from [the-delegation](https://github.com/arturitu/the-delegation.git), an open-source project by Arturo Paracuellos. We used its 3D office shell and visual starting point, including the character and office assets, with the required attribution and license notes in the repository. The server-side relay, agent-society orchestration, self-healing workers, Referee negotiation, graph view, benchmark tools, skills system, Qwen Cloud integration, and related UI are AGORA's additions.
+
 ### Built with
 
 React, TypeScript, Vite, Three.js, React Flow, Zustand, WebSockets, Node.js, Qwen Cloud / Alibaba Cloud DashScope, Qwen Max, Qwen Plus, Qwen Turbo, NVIDIA NIM fallback.
