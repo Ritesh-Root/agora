@@ -34,7 +34,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ canvasRef, isFullscreen
   return (
     <div className="flex flex-col flex-1 min-w-0 min-h-0 relative bg-zinc-950">
       {/* Simulation View Header */}
-      <div className="h-14 border-b border-black/5 flex items-center justify-between px-5 bg-white shrink-0">
+      <div className="h-14 border-b border-zinc-200/60 flex items-center justify-between px-5 bg-white shrink-0">
         <div className="flex-1 flex items-center gap-4">
           <button
             onClick={() => setIsFlowModalOpen(true)}
@@ -50,24 +50,26 @@ const SimulationView: React.FC<SimulationViewProps> = ({ canvasRef, isFullscreen
           <TeamOutputBadge system={activeSet} className="hidden md:flex" />
 
           {/* Obsidian Graph Toggle Tab Segment */}
-          <div className="flex items-center gap-1 bg-zinc-100/80 p-0.5 rounded-xl border border-zinc-200/40 ml-2">
+          <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-full ml-2">
             <button
+              data-testid="tab-office-3d"
               onClick={() => setActiveTab('office')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                 activeTab === 'office' 
-                  ? 'bg-white text-ink shadow-sm font-extrabold' 
-                  : 'text-zinc-400 hover:text-zinc-600'
+                  ? 'bg-ink text-white shadow-sm' 
+                  : 'text-zinc-500 hover:text-ink'
               }`}
             >
               <Building2 size={10} />
               Office 3D
             </button>
             <button
+              data-testid="tab-obsidian-graph"
               onClick={() => setActiveTab('graph')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                 activeTab === 'graph' 
-                  ? 'bg-white text-ink shadow-sm font-extrabold' 
-                  : 'text-zinc-400 hover:text-zinc-600'
+                  ? 'bg-ink text-white shadow-sm' 
+                  : 'text-zinc-500 hover:text-ink'
               }`}
             >
               <Network size={10} />

@@ -57,7 +57,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ isFloating }) => {
   };
 
   return (
-    <div className={`${isFloating ? 'w-full h-full max-h-[85vh] self-end rounded-2xl shadow-2xl border border-white/20' : 'w-80 h-full border-l border-zinc-100'} bg-white flex flex-col pointer-events-auto shrink-0 relative z-30 overflow-hidden transition-all duration-300`}>
+    <div className={`${isFloating ? 'w-full h-full max-h-[85vh] self-end rounded-2xl shadow-2xl border border-white/20' : 'w-80 h-full rounded-3xl border border-zinc-200/70'} bg-white flex flex-col pointer-events-auto shrink-0 relative z-30 overflow-hidden transition-all duration-300`} data-testid="inspector-panel">
       {!agent ? (
         !isFloating && <ProjectView />
       ) : (

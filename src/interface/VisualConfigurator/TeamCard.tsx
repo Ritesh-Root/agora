@@ -234,7 +234,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                   className="w-full bg-white border border-zinc-100 text-[13px] font-medium rounded-xl px-2.5 py-1.5 outline-none transition-colors"
                   style={{ '--tw-focus-border-color': USER_COLOR } as React.CSSProperties}
                   onFocus={(e) => e.target.style.borderColor = USER_COLOR}
-                  onBlur={(e) => e.target.style.borderColor = '#f4f4f5'}
+                  onBlur={(e) => e.target.style.borderColor = '#ece7d9'}
                 />
               </div>
               <div className="space-y-1">
@@ -244,7 +244,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                   onChange={(e) => { setLocalEditData(prev => ({ ...prev, teamType: e.target.value })); setErrorMsg(null); }}
                   className="w-full bg-white border border-zinc-100 text-[13px] font-medium rounded-xl px-2.5 py-1.5 outline-none transition-colors"
                   onFocus={(e) => e.target.style.borderColor = USER_COLOR}
-                  onBlur={(e) => e.target.style.borderColor = '#f4f4f5'}
+                  onBlur={(e) => e.target.style.borderColor = '#ece7d9'}
                 />
               </div>
               <div className="space-y-1">
@@ -254,7 +254,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                   onChange={(e) => { setLocalEditData(prev => ({ ...prev, teamDescription: e.target.value })); setErrorMsg(null); }}
                   className="w-full bg-white border border-zinc-100 text-[13px] font-medium rounded-xl p-2.5 outline-none resize-none h-20 leading-snug transition-colors"
                   onFocus={(e) => e.target.style.borderColor = USER_COLOR}
-                  onBlur={(e) => e.target.style.borderColor = '#f4f4f5'}
+                  onBlur={(e) => e.target.style.borderColor = '#ece7d9'}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">

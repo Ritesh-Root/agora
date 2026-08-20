@@ -40,7 +40,7 @@ const DebugEntryView: React.FC<{ entry: DebugLogEntry }> = ({ entry }) => {
     const activeTeam = useActiveTeam();
     const agents = getAllAgents(activeTeam);
     const agent = entry.agentIndex === -1
-        ? { name: 'System', color: '#71717a' }
+        ? { name: 'System', color: '#6e6754' }
         : agents.find(a => a.index === entry.agentIndex);
 
     const totalTools = entry.phase === 'request'
@@ -394,9 +394,9 @@ ${JSON.stringify(entry.raw, null, 2)}
             : [...debugLog].reverse()
 
     return (
-        <div className="w-[320px] h-full bg-white border-r border-zinc-100 flex flex-col pointer-events-auto overflow-hidden shrink-0 relative">
+        <div className="w-[320px] h-full bg-white rounded-3xl border border-zinc-200/70 flex flex-col pointer-events-auto overflow-hidden shrink-0 relative" data-testid="action-log-panel">
             {/* Header */}
-            <div className="h-10 px-5 border-b border-zinc-100 flex items-center justify-between bg-white shrink-0 z-10">
+            <div className="h-12 px-5 flex items-center justify-between bg-white shrink-0 z-10">
                 <div className="flex items-center gap-2">
                     <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Logs</span>
                     {filterAgent && (
@@ -482,17 +482,19 @@ ${JSON.stringify(entry.raw, null, 2)}
             </div>
 
             {/* Tab Switcher */}
-            <div className="flex border-b border-zinc-100 bg-zinc-50/30">
+            <div className="flex gap-1 p-1 mx-3 mt-2 mb-1 bg-zinc-100 rounded-full shrink-0">
                 <button
+                    data-testid="log-tab-activity"
                     onClick={() => setActiveTab('activity')}
-                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'activity' ? 'bg-white border-b-2 border-ink text-ink' : 'text-zinc-400 hover:text-zinc-600'
+                    className={`flex-1 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'activity' ? 'bg-ink text-white shadow-sm' : 'text-zinc-500 hover:text-ink'
                         }`}
                 >
                     Activity
                 </button>
                 <button
+                    data-testid="log-tab-technical"
                     onClick={() => setActiveTab('technical')}
-                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'technical' ? 'bg-white border-b-2 border-ink text-ink' : 'text-zinc-400 hover:text-zinc-600'
+                    className={`flex-1 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'technical' ? 'bg-ink text-white shadow-sm' : 'text-zinc-500 hover:text-ink'
                         }`}
                 >
                     Technical
@@ -505,7 +507,7 @@ ${JSON.stringify(entry.raw, null, 2)}
 
                 {activeTab === 'activity' ? (
                     entries.length === 0 ? (
-                        <p className="text-zinc-300 text-[10px] font-bold uppercase tracking-widest text-center py-16">Awaiting actions...</p>
+                        <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest text-center py-16">Awaiting actions...</p>
                     ) : (
                         entries.map((entry) => {
                             const agent = agents.find(a => a.index === entry.agentIndex)
@@ -537,7 +539,7 @@ ${JSON.stringify(entry.raw, null, 2)}
                     )
                 ) : (
                     debugEntries.length === 0 ? (
-                        <p className="text-zinc-300 text-[10px] font-bold uppercase tracking-widest text-center py-16">No technical data...</p>
+                        <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest text-center py-16">No technical data...</p>
                     ) : (
                         debugEntries.map((entry) => (
                             <DebugEntryView key={entry.id} entry={entry} />

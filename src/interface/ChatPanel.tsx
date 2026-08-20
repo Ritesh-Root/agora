@@ -134,7 +134,7 @@ const ChatPanel: React.FC = () => {
                     color: '#27272a' // text-ink
                   } : {
                     backgroundColor: '#fafafa', // bg-zinc-50
-                    borderColor: '#f4f4f5', // border-zinc-100
+                    borderColor: '#ece7d9', // border-zinc-100
                     color: '#27272a' // text-ink
                   }}
                 >

@@ -58,7 +58,7 @@ export const NegotiationArena: React.FC<{ onClose: () => void }> = ({ onClose })
 
   return createPortal((
     <div className="fixed inset-0 z-[105] flex items-center justify-center p-6 pointer-events-auto">
-      <div onClick={onClose} className="absolute inset-0 bg-white/60 backdrop-blur-xl" />
+      <div onClick={onClose} className="absolute inset-0 bg-zinc-100/80 backdrop-blur-xl" />
       <div className="relative w-full max-w-2xl max-h-[85vh] bg-white rounded-[32px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] border border-zinc-100 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between">
@@ -66,7 +66,7 @@ export const NegotiationArena: React.FC<{ onClose: () => void }> = ({ onClose })
             <Scale size={18} className="text-ink" />
             <div>
               <h2 className="font-black text-ink uppercase tracking-tight text-sm leading-none">Negotiation Arena</h2>
-              <p className="text-[10px] text-zinc-400 font-medium mt-0.5">Agents debate · a Referee resolves or escalates</p>
+              <p className="text-[10px] text-zinc-500 font-medium mt-0.5">Agents debate · a Referee resolves or escalates</p>
             </div>
           </div>
           <button onClick={onClose} className="text-zinc-300 hover:text-zinc-600 transition-colors"><X size={18} /></button>
@@ -80,7 +80,7 @@ export const NegotiationArena: React.FC<{ onClose: () => void }> = ({ onClose })
               <textarea value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Should we ship the MVP next week or harden it for two more?" className={`${inputCls} h-16 resize-none mt-1.5`} />
             </div>
             {positions.map((p, i) => (
-              <div key={i} className="grid grid-cols-[110px_1fr] gap-2 items-start">
+              <div key={i} className="grid grid-cols-[140px_1fr] gap-2 items-start">
                 <input value={p.agent} onChange={(e) => updatePos(i, { agent: e.target.value })} placeholder="Agent" className={`${inputCls} font-bold`} />
                 <textarea value={p.stance} onChange={(e) => updatePos(i, { stance: e.target.value })} placeholder={`Position ${i + 1} — what does this agent argue for?`} className={`${inputCls} h-12 resize-none`} />
               </div>
@@ -164,7 +164,7 @@ export const NegotiationArena: React.FC<{ onClose: () => void }> = ({ onClose })
             {running ? <><Loader2 size={15} className="animate-spin" /> Debating…</> : <><Scale size={15} /> Run debate</>}
           </button>
           {!hasKey && !error && (
-            <p className="text-[10px] text-zinc-400 text-center mt-2 font-medium">Requires a {PROVIDERS[provider].label} key — set it in BYOK.</p>
+            <p className="text-[10px] text-zinc-500 text-center mt-2 font-medium">Requires a {PROVIDERS[provider].label} key — set it in BYOK.</p>
           )}
         </div>
       </div>

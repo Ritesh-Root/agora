@@ -79,16 +79,16 @@ const App: React.FC = () => {
 
   return (
     <SceneContext.Provider value={sceneManager}>
-      <div className="w-screen h-screen bg-white overflow-hidden flex flex-col">
+      <div className="w-screen h-screen bg-zinc-100 overflow-hidden flex flex-col">
         {/* Top: Header */}
         {!isFullscreen && <Header />}
 
-        <div className="flex-1 flex flex-row min-h-0 min-w-0 overflow-hidden">
+        <div className={`flex-1 flex flex-row min-h-0 min-w-0 overflow-hidden ${isFullscreen ? '' : 'gap-2.5 px-2.5 pb-2.5'}`}>
           {/* Left: Log panel */}
           {isLogOpen && !isFullscreen && viewMode !== 'design' && <ActionLogPanel />}
 
           {/* Center: canvas + kanban drawer stacked */}
-          <div className="relative flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-zinc-50">
+          <div className={`relative flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-white ${isFullscreen ? '' : 'rounded-3xl border border-zinc-200/70'}`}>
 
             {/* Simulation Context - Persistently Mounted */}
             <div
@@ -118,10 +118,10 @@ const App: React.FC = () => {
         {/* Design Mode Overlay (Modal) */}
         {viewMode === 'design' && (
           <div
-            className="fixed inset-0 z-[60] flex items-center justify-center p-3 md:p-6 bg-white/40 backdrop-blur-xl"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-3 md:p-6 bg-zinc-100/60 backdrop-blur-xl"
           >
             <div
-              className="w-full h-full bg-white rounded-2xl shadow-2xl border border-zinc-200/50 overflow-hidden flex flex-col"
+              className="w-full h-full bg-white rounded-3xl shadow-2xl border border-zinc-200/70 overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <VisualConfigurator />

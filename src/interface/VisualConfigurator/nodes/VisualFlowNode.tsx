@@ -105,9 +105,9 @@ export const VisualFlowNode = ({ data, selected, type }: any) => {
               <div
                 className="text-[9px] font-mono px-1.5 py-0.5 rounded border inline-block italic w-fit"
                 style={{
-                  color: '#a1a1aa', // text-zinc-400
-                  borderColor: '#f4f4f5', // border-zinc-100
-                  backgroundColor: '#fafafa' // bg-zinc-50
+                  color: '#98917b', // text-zinc-400
+                  borderColor: '#ece7d9', // border-zinc-100
+                  backgroundColor: '#f6f2e9' // bg-zinc-50
                 }}
               >
                 {data.agent?.model}

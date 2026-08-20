@@ -62,7 +62,7 @@ function TaskCard({ task }: { task: Task; key?: string }) {
   };
 
   return (
-    <div key={task.id} className="bg-white rounded-lg border border-black/5 shadow-sm p-3 space-y-2 group relative">
+    <div key={task.id} className="bg-white rounded-2xl border border-zinc-200/70 shadow-sm p-3 space-y-2 group relative" data-testid={`task-card-${task.id}`}>
       <div
         className="flex items-start justify-between gap-1 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -151,11 +151,12 @@ export function KanbanPanel({ height = 320 }: KanbanPanelProps) {
 
   return (
     <div
-      className="w-full bg-white border-t border-black/8 flex flex-col pointer-events-auto shrink-0 relative"
+      className="w-full bg-zinc-50 border-t border-zinc-200/60 flex flex-col pointer-events-auto shrink-0 relative"
       style={{ height }}
+      data-testid="kanban-panel"
     >
       {/* Columns Scroll Area */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden bg-zinc-50/20">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden">
         <div className="flex h-full min-w-max px-5 py-4 gap-4">
           {COLUMNS.map(({ status, label }) => {
             const colTasks = tasks.filter((t) => t.status === status)
@@ -166,7 +167,7 @@ export function KanbanPanel({ height = 320 }: KanbanPanelProps) {
                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 leading-none">
                       {label}
                     </span>
-                    <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-400 text-[9px] font-bold rounded-md min-w-4.5 text-center">
+                    <span className="px-2 py-0.5 bg-butter/60 text-ink text-[9px] font-black rounded-full min-w-4.5 text-center">
                       {colTasks.length}
                     </span>
                   </div>
@@ -177,8 +178,8 @@ export function KanbanPanel({ height = 320 }: KanbanPanelProps) {
                     <TaskCard key={t.id} task={t} />
                   ))}
                   {colTasks.length === 0 && (
-                    <div className="border border-dashed border-zinc-100 rounded-lg p-4 flex items-center justify-center select-none">
-                      <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Empty</span>
+                    <div className="hatch border border-zinc-200/70 rounded-2xl p-4 flex items-center justify-center select-none">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Empty</span>
                     </div>
                   )}
                 </div>

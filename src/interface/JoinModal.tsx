@@ -50,11 +50,14 @@ const JoinModal: React.FC = () => {
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
-      <div className="absolute inset-0 bg-white/60 backdrop-blur-xl animate-fade-in" />
-      <div className="relative w-full max-w-md bg-white rounded-[40px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] p-8 md:p-10 border border-zinc-100 animate-slide-up">
+      <div className="absolute inset-0 bg-zinc-100/80 backdrop-blur-xl animate-fade-in" />
+      <div className="relative w-full max-w-md bg-white rounded-[40px] shadow-[0_32px_64px_-12px_rgba(23,21,15,0.12)] p-8 md:p-10 border border-zinc-200/70 animate-slide-up">
         <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-ink flex items-center justify-center mb-5">
+              <div className="w-3 h-3 rounded-full bg-butter" />
+            </div>
             <h2 className="text-3xl font-black text-ink tracking-tight mb-2">
               {isRoomFull ? 'Office Full' : 'Join the Office'}
             </h2>
@@ -96,6 +99,7 @@ const JoinModal: React.FC = () => {
                   Your Name
                 </label>
                 <input
+                  data-testid="join-name-input"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -104,7 +108,7 @@ const JoinModal: React.FC = () => {
                   maxLength={24}
                   disabled={isBusy}
                   autoFocus
-                  className="w-full bg-zinc-50 border border-zinc-100 rounded-3xl px-6 py-4 text-sm text-ink font-medium placeholder:text-zinc-300 focus:outline-none focus:border-zinc-200 transition-all shadow-sm disabled:opacity-50"
+                  className="w-full bg-zinc-50 border border-zinc-200/70 rounded-full px-6 py-4 text-sm text-ink font-medium placeholder:text-zinc-400 focus:outline-none focus:border-butter-600 focus:ring-2 focus:ring-butter/40 transition-all shadow-sm disabled:opacity-50"
                 />
               </div>
 
@@ -120,9 +124,10 @@ const JoinModal: React.FC = () => {
               </div>
 
               <button
+                data-testid="join-submit-btn"
                 onClick={handleJoin}
                 disabled={!name.trim() || isBusy}
-                className="w-full px-12 py-4 bg-ink text-white rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:bg-black transition-all active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-black/10"
+                className="w-full px-12 py-4 bg-ink text-white rounded-full text-xs font-black uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-ink/10"
               >
                 {isBusy ? (isPreparing ? 'Waiting for host…' : 'Connecting…') : 'Join'}
               </button>

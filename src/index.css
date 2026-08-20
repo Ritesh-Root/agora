@@ -1,9 +1,54 @@
-/* Import Inter from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
+/* AGORA — warm editorial design system: bone paper, warm ink, butter yellow */
+@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Spline+Sans+Mono:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 :root {
   color-scheme: light;
+}
+
+@theme {
+  /* Core brand tokens */
+  --color-ink: #17150f;
+  --color-paper: #fcfaf4;
+  --color-butter: #f2cc46;
+  --color-butter-300: #f7dc6f;
+  --color-butter-600: #d9af1b;
+
+  /* Remap white to warm paper */
+  --color-white: #fcfaf4;
+
+  /* Remap zinc to a warm bone/stone scale */
+  --color-zinc-50: #f6f2e9;
+  --color-zinc-100: #ece7d9;
+  --color-zinc-200: #ded7c4;
+  --color-zinc-300: #b3aa8f;
+  --color-zinc-400: #857d66;
+  --color-zinc-500: #665e4b;
+  --color-zinc-600: #55503f;
+  --color-zinc-700: #3e3a2e;
+  --color-zinc-800: #2a2720;
+  --color-zinc-900: #1b1914;
+  --color-zinc-950: #12110d;
+
+  /* Warm the yellows to the butter family */
+  --color-yellow-50: #fbf4d5;
+  --color-yellow-100: #f8ecb8;
+  --color-yellow-200: #f2e09b;
+  --color-yellow-300: #f7dc6f;
+  --color-yellow-400: #f2cc46;
+  --color-yellow-500: #e5ba2b;
+  --color-yellow-600: #d9af1b;
+  --color-yellow-700: #8a6d0b;
+
+  /* Softer, larger radii for the pill/rounded language */
+  --radius-md: 0.5rem;
+  --radius-lg: 0.8rem;
+  --radius-xl: 1.05rem;
+  --radius-2xl: 1.4rem;
+  --radius-3xl: 1.9rem;
+
+  --font-sans: 'Schibsted Grotesk', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Spline Sans Mono', ui-monospace, monospace;
 }
 
 html,
@@ -13,7 +58,14 @@ body,
   height: 100%;
   margin: 0;
   user-select: text;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Schibsted Grotesk', system-ui, -apple-system, sans-serif;
+  background: #efebe0;
+  color: #17150f;
+}
+
+::selection {
+  background: #f2cc46;
+  color: #17150f;
 }
 
 button,
@@ -45,16 +97,12 @@ a {
   @apply italic;
 }
 
-@theme {
-  --color-ink: #313437;
-}
-
 /* Custom premium design classes */
 
 @keyframes border-glow {
-  0% { border-color: rgba(59, 130, 246, 0.3); box-shadow: 0 0 12px rgba(59, 130, 246, 0.05); }
-  50% { border-color: rgba(168, 85, 247, 0.5); box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
-  100% { border-color: rgba(59, 130, 246, 0.3); box-shadow: 0 0 12px rgba(59, 130, 246, 0.05); }
+  0% { border-color: rgba(242, 204, 70, 0.35); box-shadow: 0 0 12px rgba(242, 204, 70, 0.08); }
+  50% { border-color: rgba(242, 204, 70, 0.7); box-shadow: 0 0 20px rgba(242, 204, 70, 0.25); }
+  100% { border-color: rgba(242, 204, 70, 0.35); box-shadow: 0 0 12px rgba(242, 204, 70, 0.08); }
 }
 
 @keyframes pulse-soft {
@@ -88,20 +136,37 @@ a {
   animation: fade-in 0.3s ease-out forwards;
 }
 
+/* Diagonal hatch texture (reference-style abstained/neutral accents) */
+.hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(23, 21, 15, 0.08) 0,
+    rgba(23, 21, 15, 0.08) 2px,
+    transparent 2px,
+    transparent 7px
+  );
+}
+
+/* Dot grid texture for dark cards */
+.dot-grid-dark {
+  background-image: radial-gradient(rgba(252, 250, 244, 0.14) 1.2px, transparent 1.2px);
+  background-size: 18px 18px;
+}
+
 /* Glassmorphism styling utilities */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(252, 250, 244, 0.72);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(23, 21, 15, 0.06);
 }
 
 .glass-modal {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(252, 250, 244, 0.88);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(252, 250, 244, 0.4);
+  box-shadow: 0 32px 64px -12px rgba(23, 21, 15, 0.14);
 }
 
 /* Custom scrollbars for clean UI appearance */
@@ -115,10 +180,10 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(23, 21, 15, 0.12);
   border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(23, 21, 15, 0.28);
 }

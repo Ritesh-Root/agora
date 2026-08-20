@@ -50,14 +50,15 @@ const ProjectView: React.FC = () => {
           <h2 className="text-xl font-black text-ink leading-tight">Project Info</h2>
           <div className="flex items-center gap-2">
             <div
-              className="px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors border border-transparent"
+              className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors border border-transparent"
               style={{
-                backgroundColor: phase === 'working' ? USER_COLOR : (phase === 'done' ? '#22c55e' : '#f4f4f5'),
-                color: phase === 'idle' ? '#a1a1aa' : 'white',
-                borderColor: phase === 'idle' ? '#e4e4e7' : 'transparent'
+                backgroundColor: phase === 'working' ? '#f2cc46' : (phase === 'done' ? '#22c55e' : '#ece7d9'),
+                color: phase === 'working' ? '#17150f' : (phase === 'done' ? 'white' : '#98917b'),
+                borderColor: phase === 'idle' ? '#ded7c4' : 'transparent'
               }}
+              data-testid="project-phase-chip"
             >
-              <div className={`w-1.5 h-1.5 rounded-full ${phase === 'working' ? 'bg-white animate-pulse' : 'bg-white opacity-40'}`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${phase === 'working' ? 'bg-ink animate-pulse' : 'bg-white opacity-40'}`} />
               {phase === 'idle' ? 'Ready to Start' : phase}
             </div>
           </div>
@@ -132,16 +133,16 @@ const ProjectView: React.FC = () => {
           </button>
         </div>
 
-        <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-100 mb-6">
+        <div className="bg-ink dot-grid-dark rounded-2xl p-5 mb-6 relative overflow-hidden">
           <div className="flex flex-col gap-1 mb-6">
-            <span className="text-4xl font-mono font-black text-ink tracking-tighter">
+            <span className="text-4xl font-mono font-black text-white tracking-tighter">
               {formatTokens(useCoreStore.getState().totalTokenUsage.totalTokens)}
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-[11px] font-bold font-mono">
-            <span className="text-zinc-700">{formatTokens(useCoreStore.getState().totalTokenUsage.promptTokens)} <span className="text-zinc-400 font-medium">input</span></span>
-            <span className="text-zinc-300">+</span>
-            <span className="text-zinc-700">{formatTokens(useCoreStore.getState().totalTokenUsage.completionTokens)} <span className="text-zinc-400 font-medium">output</span></span>
+            <span className="text-butter">{formatTokens(useCoreStore.getState().totalTokenUsage.promptTokens)} <span className="text-zinc-400 font-medium">input</span></span>
+            <span className="text-zinc-500">+</span>
+            <span className="text-butter">{formatTokens(useCoreStore.getState().totalTokenUsage.completionTokens)} <span className="text-zinc-400 font-medium">output</span></span>
           </div>
         </div>
 
@@ -152,7 +153,7 @@ const ProjectView: React.FC = () => {
               const agentIndex = parseInt(idx);
               const agents = getAllAgents(activeTeam);
               const agent = agentIndex === -1
-                ? { name: 'System', color: '#71717a' }
+                ? { name: 'System', color: '#6e6754' }
                 : agents.find(a => a.index === agentIndex);
 
               if (!agent || usage.totalTokens === 0) return null;

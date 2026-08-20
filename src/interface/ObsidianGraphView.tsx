@@ -17,7 +17,7 @@ const NodeLabel: React.FC<{ text: string; size: number; muted?: boolean }> = ({ 
       className={muted
         ? 'text-[7px] font-semibold uppercase tracking-wider text-zinc-400'
         : 'text-[9px] font-semibold tracking-tight text-zinc-600'}
-      style={{ textShadow: '0 1px 2px #fff, 0 0 2px #fff' }}
+      style={{ textShadow: '0 1px 2px #fcfaf4, 0 0 2px #fcfaf4' }}
     >
       {text}
     </span>
@@ -34,7 +34,7 @@ const GraphUserNode = ({ data }: any) => {
         width: `${size}px`,
         height: `${size}px`,
         backgroundColor: USER_COLOR,
-        border: '2px solid #ffffff',
+        border: '2px solid #fcfaf4',
         boxShadow: '0 2px 6px rgba(99,102,201,0.35), 0 0 0 4px rgba(99,102,201,0.10)',
       }}
       onMouseEnter={() => data.onHover(data)}
@@ -58,7 +58,7 @@ const GraphAgentNode = ({ data }: any) => {
         width: `${size}px`,
         height: `${size}px`,
         backgroundColor: color,
-        border: '2px solid #ffffff',
+        border: '2px solid #fcfaf4',
         boxShadow: isWorking
           ? `0 2px 8px ${color}66, 0 0 0 5px ${color}22`
           : `0 1px 4px rgba(0,0,0,0.14)`,
@@ -89,7 +89,7 @@ const GraphSkillNode = ({ data }: any) => {
         width: `${size}px`,
         height: `${size}px`,
         backgroundColor: '#34d399',
-        border: '1.5px solid #ffffff',
+        border: '1.5px solid #fcfaf4',
         boxShadow: '0 1px 3px rgba(16,185,129,0.35)',
       }}
       onMouseEnter={() => data.onHover(data)}
@@ -108,8 +108,8 @@ const nodeTypes: NodeTypes = {
 };
 
 // Obsidian light-theme link colors
-const EDGE_IDLE = '#d8d8de';
-const EDGE_SKILL = '#e6e6ec';
+const EDGE_IDLE = '#d9d2bf';
+const EDGE_SKILL = '#e6e0ce';
 
 export const ObsidianGraphView: React.FC = () => {
   const { selectedAgentSetId, customSystems } = useTeamStore();
@@ -466,9 +466,9 @@ export const ObsidianGraphView: React.FC = () => {
         maxZoom={2.5}
         minZoom={0.5}
         className="relative z-10"
-        style={{ background: '#ffffff' }}
+        style={{ background: '#fcfaf4' }}
       >
-        {showGrid && <Background variant={BackgroundVariant.Dots} gap={26} color="#e9e9ee" size={1.1} />}
+        {showGrid && <Background variant={BackgroundVariant.Dots} gap={26} color="#ddd6c2" size={1.1} />}
       </ReactFlow>
 
       {/* Floating Gear Settings Toggle */}

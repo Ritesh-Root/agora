@@ -57,10 +57,10 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
       <div
         onClick={onClose}
-        className="absolute inset-0 bg-white/60 backdrop-blur-xl"
+        className="absolute inset-0 bg-zinc-100/80 backdrop-blur-xl"
       />
       <div
-        className="relative w-full max-w-md bg-white rounded-[40px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] p-8 md:p-10 border border-zinc-100"
+        className="relative w-full max-w-md bg-white rounded-[40px] shadow-[0_32px_64px_-12px_rgba(23,21,15,0.12)] p-8 md:p-10 border border-zinc-200/70"
       >
         {/* Close button */}
         <button
@@ -132,21 +132,22 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
 
           {/* API Key input */}
           <div className="mb-4">
-            <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-300 mb-4 ml-1">
+            <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4 ml-1">
               API Key
             </label>
             <div className="relative group">
               <input
+                data-testid="byok-key-input"
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={`Paste your ${spec.keyPlaceholder} key here`}
-                className="w-full bg-zinc-50 border border-zinc-100 rounded-3xl px-6 py-4 pr-14 text-sm text-ink font-mono placeholder:text-zinc-300 placeholder:font-sans focus:outline-none focus:border-zinc-200 transition-all shadow-sm group-hover:shadow-md"
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-3xl px-6 py-4 pr-14 text-sm text-ink font-mono placeholder:text-zinc-400 placeholder:font-sans focus:outline-none focus:border-butter-600 transition-all shadow-sm group-hover:shadow-md"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(v => !v)}
-                className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-200 hover:text-zinc-400 transition-colors cursor-pointer"
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-ink transition-colors cursor-pointer"
               >
                 {showKey ? <EyeOff size={20} strokeWidth={2.5} /> : <Eye size={20} strokeWidth={2.5} />}
               </button>
@@ -158,7 +159,7 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
             href={spec.consoleUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block mb-10 ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:text-ink transition-colors"
+            className="inline-block mb-10 ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-ink transition-colors underline underline-offset-2 decoration-butter-600/60"
           >
             Get a {spec.label.replace(/\s*\(.*\)/, '')} key ↗
           </a>
@@ -177,9 +178,10 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
             </button>
 
             <button
+              data-testid="byok-save-btn"
               onClick={handleSave}
               disabled={!apiKey.trim()}
-              className="px-12 py-4 bg-ink text-white rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:bg-black transition-all active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-black/10"
+              className="px-12 py-4 bg-ink text-white rounded-full text-xs font-black uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-black/10"
             >
               Save
             </button>

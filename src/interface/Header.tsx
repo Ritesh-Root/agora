@@ -52,16 +52,22 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="h-14 border-b border-zinc-100 flex items-center justify-between px-6 bg-white shrink-0 relative z-40">
+    <header className="h-16 flex items-center justify-between px-5 shrink-0 relative z-40">
       {/* Left: Project Title */}
       <div className="flex items-center min-w-0">
-        <span className="text-lg font-black tracking-tight text-ink shrink-0">AGORA</span>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-ink flex items-center justify-center shadow-sm">
+            <div className="w-2.5 h-2.5 rounded-full bg-butter" />
+          </div>
+          <span className="text-lg font-black tracking-tight text-ink shrink-0">AGORA</span>
+        </div>
 
         <div className="flex items-center gap-3 self-start mt-3 ml-2 min-w-0">
           <div className="flex items-center gap-1 shrink-0">
             <button
+              data-testid="info-btn"
               onClick={() => setIsInfoOpen(true)}
-              className="text-zinc-300 hover:text-zinc-500 transition-colors cursor-pointer"
+              className="text-zinc-400 hover:text-ink transition-colors cursor-pointer"
             >
               <Info size={14} strokeWidth={2} />
             </button>
@@ -86,8 +92,9 @@ const Header: React.FC = () => {
       <div className="flex items-center gap-3">
         {/* Run Society Button */}
         <button
+          data-testid="run-swarm-btn"
           onClick={() => { setBriefType('society'); setBriefModalOpen(true); }}
-          className="flex items-center gap-2 px-3 py-1 bg-ink hover:bg-black text-white rounded-lg transition-all shadow-lg shadow-black/10 active:scale-95 cursor-pointer h-9 shrink-0"
+          className="flex items-center gap-2 px-4 py-1 bg-butter hover:bg-butter-300 text-ink rounded-full transition-all shadow-sm active:scale-95 cursor-pointer h-9 shrink-0"
           title="Run Agent Society"
         >
           <Play size={12} fill="currentColor" />
@@ -96,8 +103,9 @@ const Header: React.FC = () => {
 
         {/* Swarm Bench Button */}
         <button
+          data-testid="swarm-bench-btn"
           onClick={() => { setBriefType('benchmark'); setBriefModalOpen(true); }}
-          className="flex items-center gap-2 px-3 py-1 bg-zinc-800 hover:bg-zinc-900 text-white rounded-lg transition-all shadow-lg shadow-zinc-800/10 active:scale-95 cursor-pointer h-9 shrink-0"
+          className="flex items-center gap-2 px-4 py-1 bg-ink hover:bg-zinc-800 text-white rounded-full transition-all shadow-sm active:scale-95 cursor-pointer h-9 shrink-0"
           title="Swarm Benchmark"
         >
           <BarChart2 size={12} />
@@ -105,8 +113,9 @@ const Header: React.FC = () => {
         </button>
 
         <button
+          data-testid="manage-teams-btn"
           onClick={() => setViewMode('design')}
-          className="flex items-center gap-2 px-3 py-1 bg-ink hover:bg-zinc-900 text-white rounded-lg transition-all shadow-lg shadow-black/10 active:scale-95 cursor-pointer h-9 shrink-0 ml-1"
+          className="flex items-center gap-2 px-4 py-1 bg-white border border-zinc-200 hover:border-zinc-400 text-ink rounded-full transition-all active:scale-95 cursor-pointer h-9 shrink-0 ml-1"
           title="Manage Teams"
         >
           <Settings size={14} className="group-hover:rotate-45 transition-transform" />
@@ -117,7 +126,8 @@ const Header: React.FC = () => {
 
         <div className="relative group">
           <button
-            className="flex items-center gap-1.5 text-zinc-400 hover:text-ink transition-colors px-2 py-1 cursor-default"
+            data-testid="players-popover-btn"
+            className="flex items-center gap-1.5 text-zinc-500 hover:text-ink transition-colors px-2 py-1 cursor-default"
             title="Players connected"
           >
             <Users size={16} />
@@ -147,22 +157,25 @@ const Header: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
+            data-testid="fullscreen-btn"
             onClick={handleFullscreen}
-            className="text-zinc-400 hover:text-ink transition-colors p-1"
+            className="text-zinc-500 hover:text-ink transition-colors p-1"
             title="Fullscreen Browser"
           >
             <Maximize2 size={16} />
           </button>
           <button
+            data-testid="negotiation-btn"
             onClick={() => setNegotiationOpen(true)}
-            className="text-zinc-400 hover:text-ink transition-colors p-1"
+            className="text-zinc-500 hover:text-ink transition-colors p-1"
             title="Negotiation Arena — agents debate to resolve conflicts"
           >
             <Scale size={16} />
           </button>
           <button
+            data-testid="byok-btn"
             onClick={() => setBYOKOpen(true)}
-            className="relative text-zinc-400 hover:text-ink transition-colors p-1"
+            className="relative text-zinc-500 hover:text-ink transition-colors p-1"
             title="API Key (BYOK)"
           >
             <KeyRound size={16} className={hasKey ? 'text-emerald-500 hover:text-emerald-600' : ''} />
@@ -188,7 +201,7 @@ const Header: React.FC = () => {
       {/* Brief Input Premium Modal */}
       {briefModalOpen && createPortal(
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 pointer-events-auto">
-          <div onClick={() => setBriefModalOpen(false)} className="absolute inset-0 bg-white/40 backdrop-blur-xl" />
+          <div onClick={() => setBriefModalOpen(false)} className="absolute inset-0 bg-zinc-100/60 backdrop-blur-xl" />
           <div className="relative w-full max-w-md bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.12)] border border-zinc-100 overflow-hidden flex flex-col p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
               <div className="flex items-center gap-2">
@@ -205,6 +218,7 @@ const Header: React.FC = () => {
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Brief Description</label>
               <textarea
+                data-testid="brief-input"
                 value={briefInput}
                 onChange={(e) => setBriefInput(e.target.value)}
                 placeholder={
@@ -218,15 +232,17 @@ const Header: React.FC = () => {
 
             <div className="flex gap-2 justify-end pt-2">
               <button
+                data-testid="brief-cancel-btn"
                 onClick={() => setBriefModalOpen(false)}
-                className="px-4 py-2 border border-zinc-200 hover:bg-zinc-50 text-zinc-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors active:scale-95"
+                className="px-5 py-2 border border-zinc-200 hover:bg-zinc-50 text-zinc-500 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors active:scale-95"
               >
                 Cancel
               </button>
               <button
+                data-testid="brief-execute-btn"
                 onClick={handleRunAction}
                 disabled={!briefInput.trim()}
-                className="px-4 py-2 bg-ink hover:bg-black disabled:opacity-40 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors active:scale-95"
+                className="px-5 py-2 bg-butter hover:bg-butter-300 disabled:opacity-40 text-ink rounded-full text-[10px] font-black uppercase tracking-widest transition-colors active:scale-95"
               >
                 {briefType === 'society' ? 'Execute Swarm' : 'Run Benchmark'}
               </button>
