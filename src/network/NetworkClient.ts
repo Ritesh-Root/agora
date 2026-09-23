@@ -166,7 +166,8 @@ export class NetworkClient {
           role: msg.role,
           status: msg.status,
           output: msg.output,
-          attempt: msg.attempt
+          attempt: msg.attempt,
+          researching: msg.researching ?? false,
         });
         break;
       case 'society-negotiation':

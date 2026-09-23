@@ -11,6 +11,7 @@ export default defineConfig(({mode}) => {
   process.env.JEV_API_KEY = env.JEV_API_KEY || process.env.JEV_API_KEY;
   process.env.TYPESAFE_BASE_URL = env.TYPESAFE_BASE_URL || process.env.TYPESAFE_BASE_URL;
   process.env.JEV_MODEL = env.JEV_MODEL || process.env.JEV_MODEL;
+  process.env.EXA_API_KEY = env.EXA_API_KEY || process.env.EXA_API_KEY;
   return {
     base: '/',
     plugins: [react(), tailwindcss(), relayPlugin()],

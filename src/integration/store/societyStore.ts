@@ -7,6 +7,7 @@ export interface SocietyTask {
   status: 'pending' | 'running' | 'done' | 'healing' | 'escalated';
   output?: string;
   attempt?: number;
+  researching?: boolean;
 }
 
 export interface NegotiationRound {
@@ -116,6 +117,7 @@ export const useSocietyStore = create<SocietyState>((set) => ({
         status: update.status || 'pending',
         output: update.output,
         attempt: update.attempt || 1,
+        researching: update.researching,
       });
     }
 

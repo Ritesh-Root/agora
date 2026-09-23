@@ -13,6 +13,7 @@
  */
 
 import { judgeWorkerOutput } from './decider/gates';
+import { beginResearch, researchForTask, sourcesMarkdown } from '../research/research';
 
 /** Minimal structural type any LLM provider satisfies. */
 export interface LLMLike {
@@ -192,6 +193,7 @@ function workerPrompt(
   depText: string,
   attempt: number,
   lastInvalid: string,
+  sources: string,
 ): string {
   const parts = [
     `Brief:\n${brief}`,
@@ -201,6 +203,7 @@ function workerPrompt(
       : '',
     siblings.length ? `Other tasks in this wave, do not duplicate them: ${siblings.join('; ')}` : '',
     depText ? `Outputs you depend on:\n${depText}` : '',
+    sources ? `${sources}\n\nCite the sources you use, by URL.` : '',
   ].filter(Boolean);
   const body = parts.join('\n\n');
   if (attempt === 1) return body;
@@ -232,7 +235,10 @@ async function runWorker(
         onEvent?.({ type: 'task-healing', taskId: task.id, title: task.title, attempt: attempts });
       }
       const system = `You are a ${task.role} worker in an agent society. Complete the task and respond with the deliverable only.`;
-      const userContent = workerPrompt(task, brief, siblings, depText, attempts, lastInvalid);
+      const sources = await researchForTask(task, brief, {
+        onStart: () => onEvent?.({ type: 'task-research', taskId: task.id, title: task.title, role: task.role }),
+      });
+      const userContent = workerPrompt(task, brief, siblings, depText, attempts, lastInvalid, sources);
 
       const res = await provider.generateCompletion(
         [{ role: 'user', content: userContent }],
@@ -293,6 +299,7 @@ export async function runSociety(
   const workerModel = options.models?.worker ?? DEFAULT_WORKER_MODEL;
   const isValid = options.isValidOutput ?? defaultIsValid;
   const onEvent = options.onEvent;
+  beginResearch();
 
   // 1. Manager decomposes the brief.
   const managerSystem =
@@ -355,6 +362,8 @@ export async function runSociety(
         managerModel,
       );
       synthesis = leadRes.content ?? '';
+      const cited = sourcesMarkdown();
+      if (cited && !synthesis.includes('## Sources')) synthesis += cited;
     } catch {
       // synthesis is best-effort; the task outputs still stand on their own
     }

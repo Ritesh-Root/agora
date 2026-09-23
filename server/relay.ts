@@ -10,6 +10,8 @@ import { leadNotesFromConflict } from './society/leadNotes';
 import { runBenchmark } from './bench/runner';
 import { createServerProvider } from './society/provider';
 import { assertPublicHttpsTarget, MAX_PROXY_BODY } from './proxyGuard';
+import { beginRunStats, currentRunStats, endRunStats } from './society/decider/runStats';
+import { researchSearchCount, researchSources } from './research/research';
 
 function chatUrl(baseUrl: string): string {
   const root = baseUrl.trim().replace(/\/$/, '');
@@ -262,13 +264,23 @@ export function relayPlugin(): Plugin {
               }
 
               send(ws, { type: 'society-started', brief: msg.brief, taskCount: 0 });
+              beginRunStats();
 
               const model = msg.model?.trim();
               let negotiationRes: any;
               runSociety(msg.brief, provider, {
                 models: model ? { manager: model, worker: model } : undefined,
                 onEvent: (event) => {
-                  if (event.type === 'task-start') {
+                  if (event.type === 'task-research') {
+                    send(ws, {
+                      type: 'society-task-update',
+                      taskId: event.taskId,
+                      title: event.title,
+                      role: event.role,
+                      status: 'running',
+                      researching: true,
+                    });
+                  } else if (event.type === 'task-start') {
                     send(ws, {
                       type: 'society-task-update',
                       taskId: event.taskId,
@@ -351,10 +363,16 @@ export function relayPlugin(): Plugin {
                     })),
                     synthesis: result.synthesis,
                     negotiation: negotiationRes,
-                    metrics: result.metrics
+                    metrics: result.metrics,
+                    research: {
+                      searches: currentRunStats()?.researchCalls ?? researchSearchCount(),
+                      sources: researchSources(),
+                    },
                   }
                 });
+                endRunStats();
               }).catch((err) => {
+                endRunStats();
                 send(ws, { type: 'society-error', error: err.message || String(err) });
               });
               break;

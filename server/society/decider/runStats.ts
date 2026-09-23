@@ -12,6 +12,7 @@ export interface RunStats {
   uncertain: number;
   inputTokens: number;
   outputTokens: number;
+  researchCalls: number;
 }
 
 let current: RunStats | null = null;
@@ -24,6 +25,7 @@ export function beginRunStats(): RunStats {
     uncertain: 0,
     inputTokens: 0,
     outputTokens: 0,
+    researchCalls: 0,
   };
   return current;
 }
@@ -34,6 +36,11 @@ export function currentRunStats(): RunStats | null {
 
 export function endRunStats(): void {
   current = null;
+}
+
+export function noteResearchCall(): void {
+  if (!current) return;
+  current.researchCalls += 1;
 }
 
 export function noteDecisionCall(records: NotedDecision[], _error?: string): void {

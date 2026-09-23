@@ -54,6 +54,8 @@ export class SceneManager {
   private knownPlayers = new Map<string, PlayerInfo>();
   private activeHumanSlots = new Set<number>();
   private lastNetworkSendMs = 0;
+  private researchWalked: number | null = null;
+  private globe: HTMLDivElement;
 
   private unsubs: (() => void)[] = [];
   private isDisposed = false;
@@ -72,6 +74,11 @@ export class SceneManager {
 
     this.resizeObserver = new ResizeObserver(() => this.onResize());
     this.resizeObserver.observe(container);
+    this.globe = document.createElement('div');
+    this.globe.dataset.testid = 'research-globe';
+    this.globe.textContent = '🌐';
+    this.globe.style.cssText = 'position:absolute;left:0;top:0;z-index:6;display:none;width:22px;height:22px;margin:-28px 0 0 -11px;border-radius:999px;background:#f4d35e;color:#17150f;font-size:12px;line-height:22px;text-align:center;pointer-events:none;';
+    container.appendChild(this.globe);
 
     const activeSet = getActiveAgentSet();
     this.simulation = new AgentSimulation(activeSet);
@@ -132,9 +139,15 @@ export class SceneManager {
     const { tasks, negotiation } = useSocietyStore.getState();
     tasks.forEach((task, index) => {
       const agentIndex = agents[index % agents.length].index;
-      if (task.status === 'running' || task.status === 'healing') this.setNpcWorking(agentIndex, true);
+      if (task.researching) {
+        if (this.researchWalked !== agentIndex) {
+          this.researchWalked = agentIndex;
+          this.moveNpcToResearch(agentIndex);
+        }
+      } else if (task.status === 'running' || task.status === 'healing') this.setNpcWorking(agentIndex, true);
       else if (task.status === 'done' || task.status === 'escalated') this.moveNpcToSpawn(agentIndex);
     });
+    if (!tasks.some((task) => task.researching)) this.researchWalked = null;
     const lastTurn = negotiation?.transcript[negotiation.transcript.length - 1];
     if (lastTurn) this.setNpcTalking(agents[0].index, true);
   }
@@ -354,6 +367,15 @@ export class SceneManager {
       const task = useCoreStore.getState().tasks.find(t => t.status === 'on_hold' && t.assignedAgentId === index);
       this.controller.play(renderIndex, task ? 'listen' : 'idle');
     }
+  }
+
+  public moveNpcToResearch(index: number): void {
+    if (!this.controller) return;
+    const pois = this.poiManager.getAllPois();
+    const poi = pois.find((item) => /library|window/i.test(item.id))
+      || pois.find((item) => item.id.includes('area'))
+      || pois.find((item) => item.id.includes('sit_work'));
+    if (poi) this.controller.walkToPoi(toRenderIndex(index), poi.id);
   }
 
   public moveNpcToBoardroom(index: number): void {
@@ -577,6 +599,16 @@ export class SceneManager {
         }
       }
       useUiStore.setState({ npcScreenPositions });
+      const researching = useSocietyStore.getState().tasks.find((task) => task.researching);
+      const agents = getAllAgents(getActiveAgentSet());
+      const researchIndex = researching ? agents[useSocietyStore.getState().tasks.indexOf(researching) % agents.length]?.index : undefined;
+      const researchPos = researchIndex != null ? npcScreenPositions[researchIndex] : undefined;
+      if (researchPos) {
+        this.globe.style.display = 'block';
+        this.globe.style.transform = `translate(${researchPos.x}px, ${researchPos.y}px)`;
+      } else {
+        this.globe.style.display = 'none';
+      }
     }
     if (selectedNpcIndex !== null && npcScreenPositions[selectedNpcIndex]) {
       const p = npcScreenPositions[selectedNpcIndex];
@@ -619,5 +651,5 @@ export class SceneManager {
     this.stage.setChatMode(false, false);
   }
 
-  public dispose() { this.isDisposed = true; this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.flatOffice?.stop(); this.driverManager?.dispose(); this.engine.dispose(); }
+  public dispose() { this.isDisposed = true; this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.globe.remove(); this.flatOffice?.stop(); this.driverManager?.dispose(); this.engine.dispose(); }
 }

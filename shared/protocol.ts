@@ -59,6 +59,10 @@ export interface SocietyResultWire {
     healed: number;
     wallMs: number;
   };
+  research?: {
+    searches: number;
+    sources: Array<{ title: string; url: string }>;
+  };
 }
 
 export type ClientMessage =
@@ -80,7 +84,7 @@ export type ServerMessage =
   | { type: 'npc-state'; npcs: RemoteNpcState[] }
   | { type: 'player-left'; playerId: string }
   | { type: 'society-started'; brief: string; taskCount: number }
-  | { type: 'society-task-update'; taskId: string; title: string; role: string; status: 'running' | 'done' | 'healing' | 'escalated'; output?: string; attempt?: number }
+  | { type: 'society-task-update'; taskId: string; title: string; role: string; status: 'running' | 'done' | 'healing' | 'escalated'; output?: string; attempt?: number; researching?: boolean }
   | { type: 'society-negotiation'; topic: string; round: number; agent: string; argument: string; scores?: Array<{ agent: string; score: number; reason: string }> }
   | { type: 'society-complete'; result: SocietyResultWire }
   | { type: 'society-error'; error: string }

@@ -2,6 +2,7 @@ import { getAllAgents } from '../data/agents';
 import { useCoreStore } from '../integration/store/coreStore';
 import { getActiveAgentSet } from '../integration/store/teamStore';
 import { Engine } from './core/Engine';
+import { useSocietyStore } from '../integration/store/societyStore';
 
 interface FlatAgent {
   name: string;
@@ -92,6 +93,11 @@ export class FlatOffice {
       ctx.fillStyle = agent.color || '#17150f';
       ctx.arc(agent.x, agent.y, 10, 0, Math.PI * 2);
       ctx.fill();
+      const researching = useSocietyStore.getState().tasks.some((task) => task.researching) && index === 0;
+      if (researching) {
+        ctx.font = '14px system-ui, sans-serif';
+        ctx.fillText('🌐', agent.x - 7, agent.y - 16);
+      }
       ctx.fillStyle = '#17150f';
       ctx.font = '600 11px "Schibsted Grotesk", system-ui, sans-serif';
       ctx.fillText(agent.name, agent.x + 14, agent.y + 4);

@@ -7,11 +7,11 @@ coverage/
 .DS_Store
 *.log
 .env*
-!.env.example
 .vercel
 .env
 .env.*
 *.env
+!.env.example
 credentials.json
 *.pem
 *.key

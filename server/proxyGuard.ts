@@ -52,3 +52,28 @@ export async function assertPublicHttpsTarget(
   }
   return url;
 }
+
+/** Public http or https. Private, loopback, and link-local hosts are refused. */
+export async function assertPublicWebTarget(
+  raw: string,
+  resolve: (hostname: string) => Promise<string[]> = defaultResolve,
+): Promise<URL> {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error('Invalid target URL');
+  }
+  if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.username || url.password) {
+    throw new Error('Only public http(s) targets are allowed');
+  }
+  const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (!host || host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) {
+    throw new Error('Target host is not allowed');
+  }
+  const ips = await resolve(host);
+  if (ips.length === 0 || ips.some(isPrivateAddress)) {
+    throw new Error('Target host is not allowed');
+  }
+  return url;
+}
