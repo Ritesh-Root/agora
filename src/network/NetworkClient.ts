@@ -3,6 +3,7 @@ import { useRosterStore } from './RosterStore';
 import { useSocietyStore } from '../integration/store/societyStore';
 import { useCoreStore } from '../integration/store/coreStore';
 import { useRoomChatStore } from './roomChatStore';
+import { useDecisionStore } from '../interface/decisionStore';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 3000];
 
@@ -158,7 +159,14 @@ export class NetworkClient {
         useRoomChatStore.getState().add(msg.message);
         break;
       case 'society-started':
+        useDecisionStore.getState().reset();
         useSocietyStore.getState().startSociety(msg.brief);
+        break;
+      case 'society-decision':
+        useDecisionStore.getState().add(msg.decision);
+        break;
+      case 'decision-request':
+        useDecisionStore.getState().setPending({ id: msg.id, ...msg.decision });
         break;
       case 'society-task-update':
         useSocietyStore.getState().updateTask(msg.taskId, {

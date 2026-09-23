@@ -1,6 +1,7 @@
 import { callJev, JevClientOptions } from './jevClient';
 import { policyFor } from './policy';
 import { noteDecisionCall } from './runStats';
+import { publishDecision } from './live';
 import { Answer, JsonText, PolicyOutcome, Question, Thresholds, TokenUsage } from './types';
 
 export interface DecisionRecord {
@@ -47,6 +48,8 @@ export async function decide(
     error: call.error,
   }));
   noteDecisionCall(records, call.error);
+  for (const record of records) publishDecision(record);
+  for (const record of records) publishDecision(record);
 
   const log = options?.log ?? ((record) => console.info('[agora-decider]', JSON.stringify(record)));
   for (const record of records) log(record);

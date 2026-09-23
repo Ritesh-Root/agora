@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { judgeConflict, judgeEscalation, judgeWorkerOutput } from './gates';
 import { DecisionRecord } from './index';
+import { setBossAsker } from './live';
 
 function record(partial: Partial<DecisionRecord> & Pick<DecisionRecord, 'question' | 'answer' | 'policy'>): DecisionRecord {
   return {
@@ -104,5 +105,24 @@ describe('critical-path gates', () => {
     ]);
     expect(verdict).toBe('escalate');
     delete process.env.AGORA_DECIDER;
+  });
+
+  it('accepts a worker output when the boss approves the ask', async () => {
+    process.env.AGORA_DECIDER = 'jev';
+    setBossAsker(async () => ({ action: 'approve' }));
+    try {
+      const verdict = await judgeWorkerOutput({
+        brief: 'Write a note',
+        task: { title: 'Note', role: 'writer', prompt: 'Write a note' },
+        output: 'Maybe.',
+      }, async () => [
+        record({ question: 'meets_criterion', policy: 'ask_boss', answer: { type: 'noul', noul: 0.5 } }),
+        record({ question: 'is_deliverable', policy: 'proceed', answer: { type: 'noul', noul: 0.99 } }),
+      ]);
+      expect(verdict).toBe('accept');
+    } finally {
+      setBossAsker(null);
+      delete process.env.AGORA_DECIDER;
+    }
   });
 });

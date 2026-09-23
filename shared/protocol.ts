@@ -30,6 +30,25 @@ export interface RoomChatMessage {
   timestamp: number;
 }
 
+export interface DecisionWire {
+  question: string;
+  policy: 'proceed' | 'fallback' | 'ask_boss';
+  answer: string;
+  confidence: number | null;
+  latencyMs: number;
+  error?: string;
+}
+
+export interface RunSummaryWire {
+  decisions: number;
+  inputTokens: number;
+  jevCostUsd: number;
+  searches: number;
+  sources: Array<{ title: string; url: string }>;
+  comparisonMeasured: false;
+  comparisonNote: string;
+}
+
 export interface SocietyResultWire {
   brief: string;
   tasks: Array<{
@@ -63,6 +82,7 @@ export interface SocietyResultWire {
     searches: number;
     sources: Array<{ title: string; url: string }>;
   };
+  summary?: RunSummaryWire;
 }
 
 export type ClientMessage =
@@ -73,7 +93,8 @@ export type ClientMessage =
   | { type: 'register-cabins'; cabinPoiIds: string[] }
   | { type: 'run-society'; brief: string; baseUrl?: string; apiKey?: string; model?: string }
   | { type: 'run-benchmark'; brief: string; baseUrl?: string; apiKey?: string; model?: string }
-  | { type: 'room-chat'; text: string };
+  | { type: 'room-chat'; text: string }
+  | { type: 'decision-reply'; id: string; action: 'approve' | 'edit' | 'reject'; text?: string };
 
 export type ServerMessage =
   | { type: 'joined'; me: PlayerInfo; roster: PlayerInfo[] }
@@ -90,4 +111,6 @@ export type ServerMessage =
   | { type: 'society-error'; error: string }
   | { type: 'room-chat'; message: RoomChatMessage }
   | { type: 'room-chat-history'; messages: RoomChatMessage[] }
-  | { type: 'benchmark-result'; society: SocietyResultWire; single: { output: string; wallMs: number; model: string }; qualityScores: { society: number; single: number } | null };
+  | { type: 'benchmark-result'; society: SocietyResultWire; single: { output: string; wallMs: number; model: string }; qualityScores: { society: number; single: number } | null }
+  | { type: 'society-decision'; decision: DecisionWire }
+  | { type: 'decision-request'; id: string; decision: DecisionWire };

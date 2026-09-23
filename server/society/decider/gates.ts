@@ -1,4 +1,5 @@
 import { decide, DecisionRecord } from './index';
+import { consultBoss } from './live';
 import { Question } from './types';
 
 export type DeciderMode = 'legacy' | 'jev';
@@ -52,7 +53,12 @@ export async function judgeWorkerOutput(
   const byKey = Object.fromEntries(records.map((record) => [record.question, record]));
   const answers = [byKey.meets_criterion, byKey.is_deliverable];
   if (answers.some((record) => record?.policy === 'fallback')) return 'retry';
-  if (answers.some((record) => record?.policy === 'ask_boss')) return 'escalate';
+  const ask = answers.find((record) => record?.policy === 'ask_boss');
+  if (ask) {
+    const action = await consultBoss(ask);
+    if (action === 'approve' || action === 'edit') return 'accept';
+    return 'escalate';
+  }
   if (answers.every((record) => record?.policy === 'proceed')) return 'accept';
   return 'legacy';
 }
@@ -78,7 +84,12 @@ export async function judgeConflict(
   const record = records[0];
   if (!record || record.answer.type === 'uncertain') return 'legacy';
   if (record.policy === 'proceed') return 'debate';
-  if (record.policy === 'ask_boss') return 'ask_boss';
+  if (record.policy === 'ask_boss') {
+    const action = await consultBoss(record);
+    if (action === 'approve') return 'debate';
+    if (action === 'reject') return 'skip';
+    return 'ask_boss';
+  }
   return 'skip';
 }
 
@@ -107,7 +118,10 @@ export async function judgeEscalation(
   });
   const record = records[0];
   if (!record || record.answer.type === 'uncertain') return 'legacy';
-  if (record.policy !== 'proceed') return 'escalate';
+  if (record.policy !== 'proceed') {
+    if (record.policy === 'ask_boss' && await consultBoss(record) === 'approve') return 'consensus';
+    return 'escalate';
+  }
   if (record.answer.type === 'choice' && record.answer.choice === 'consensus') return 'consensus';
   return 'escalate';
 }

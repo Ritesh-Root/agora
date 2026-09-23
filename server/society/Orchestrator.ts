@@ -13,6 +13,7 @@
  */
 
 import { judgeWorkerOutput } from './decider/gates';
+import { takeBossEdit } from './decider/live';
 import { beginResearch, researchForTask, sourcesMarkdown } from '../research/research';
 
 /** Minimal structural type any LLM provider satisfies. */
@@ -256,6 +257,8 @@ async function runWorker(
         : judged;
 
       if (verdict === 'accept') {
+        const edited = takeBossEdit();
+        if (edited) output = edited;
         onEvent?.({ type: 'task-done', taskId: task.id, title: task.title, status: 'done', output, attempts, healed: attempts > 1 });
         return {
           id: task.id,

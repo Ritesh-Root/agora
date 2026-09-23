@@ -11,6 +11,7 @@ import { runBenchmark } from './bench/runner';
 import { createServerProvider } from './society/provider';
 import { assertPublicHttpsTarget, MAX_PROXY_BODY } from './proxyGuard';
 import { beginRunStats, currentRunStats, endRunStats } from './society/decider/runStats';
+import { setBossAsker, setDecisionSink, toDecisionWire } from './society/decider/live';
 import { researchSearchCount, researchSources } from './research/research';
 
 function chatUrl(baseUrl: string): string {
@@ -165,6 +166,13 @@ export function relayPlugin(): Plugin {
 
       wss.on('connection', (ws: WsSocket) => {
         let playerId: string | null = null;
+        const pendingBoss = new Map<string, (reply: { action: 'approve' | 'edit' | 'reject'; text?: string } | null) => void>();
+        const clearBoss = () => {
+          setDecisionSink(null);
+          setBossAsker(null);
+          for (const wait of pendingBoss.values()) wait(null);
+          pendingBoss.clear();
+        };
 
         ws.on('message', async (raw) => {
           let msg: ClientMessage;
@@ -175,6 +183,13 @@ export function relayPlugin(): Plugin {
           }
 
           switch (msg.type) {
+            case 'decision-reply': {
+              const wait = pendingBoss.get(msg.id);
+              if (!wait) break;
+              pendingBoss.delete(msg.id);
+              wait({ action: msg.action, text: msg.text });
+              break;
+            }
             case 'join': {
               if (playerId) return;
               const id = randomUUID();
@@ -265,6 +280,21 @@ export function relayPlugin(): Plugin {
 
               send(ws, { type: 'society-started', brief: msg.brief, taskCount: 0 });
               beginRunStats();
+              setDecisionSink((record) => {
+                send(ws, { type: 'society-decision', decision: toDecisionWire(record) });
+              });
+              setBossAsker((record) => new Promise((resolve) => {
+                const id = randomUUID();
+                const timer = setTimeout(() => {
+                  pendingBoss.delete(id);
+                  resolve(null);
+                }, 30_000);
+                pendingBoss.set(id, (reply) => {
+                  clearTimeout(timer);
+                  resolve(reply);
+                });
+                send(ws, { type: 'decision-request', id, decision: toDecisionWire(record) });
+              }));
 
               const model = msg.model?.trim();
               let negotiationRes: any;
@@ -368,11 +398,22 @@ export function relayPlugin(): Plugin {
                       searches: currentRunStats()?.researchCalls ?? researchSearchCount(),
                       sources: researchSources(),
                     },
+                    summary: {
+                      decisions: currentRunStats()?.decisionCalls ?? 0,
+                      inputTokens: currentRunStats()?.inputTokens ?? 0,
+                      jevCostUsd: ((currentRunStats()?.inputTokens ?? 0) * 0.042) / 1_000_000,
+                      searches: researchSearchCount(),
+                      sources: researchSources(),
+                      comparisonMeasured: false,
+                      comparisonNote: 'The five-brief comparison was not run. Jev returned HTTP 401, so time saved versus the legacy path was not measured.',
+                    },
                   }
                 });
                 endRunStats();
+                clearBoss();
               }).catch((err) => {
                 endRunStats();
+                clearBoss();
                 send(ws, { type: 'society-error', error: err.message || String(err) });
               });
               break;
