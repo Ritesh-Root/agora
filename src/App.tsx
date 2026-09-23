@@ -19,6 +19,9 @@ import { VisualConfigurator } from './interface/VisualConfigurator/VisualConfigu
 import { useRosterStore } from './network/RosterStore';
 import { SceneContext } from './simulation/SceneContext';
 import { SceneManager } from './simulation/SceneManager';
+import ReplayBar from './interface/ReplayBar';
+import { networkClient } from './network/NetworkClient';
+import { startReplay } from './replay/playReplay';
 
 
 const App: React.FC = () => {
@@ -77,6 +80,13 @@ const App: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const name = new URLSearchParams(window.location.search).get('replay');
+    if (!name) return;
+    networkClient.enterDemoMode('Replay');
+    void startReplay(name);
+  }, []);
+
   return (
     <SceneContext.Provider value={sceneManager}>
       <div className="w-screen h-screen bg-zinc-100 overflow-hidden flex flex-col">
@@ -131,6 +141,7 @@ const App: React.FC = () => {
 
         {/* Join Gate — blocks interaction until connected to the host */}
         {!hasJoined && <JoinModal />}
+        <ReplayBar />
 
         {/* Final output — fixed viewport overlay */}
         <FinalOutputModal />

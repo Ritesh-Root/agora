@@ -1,6 +1,7 @@
 import { Pipette } from 'lucide-react';
 import React, { useState } from 'react';
 import { networkClient } from '../network/NetworkClient';
+import { startReplay } from '../replay/playReplay';
 import { useRosterStore } from '../network/RosterStore';
 import { USER_COLOR } from '../theme/brand';
 import { ColorPicker } from './VisualConfigurator/ColorPicker';
@@ -130,6 +131,22 @@ const JoinModal: React.FC = () => {
                 className="w-full px-12 py-4 bg-ink text-white rounded-full text-xs font-black uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-ink/10"
               >
                 {isBusy ? (isPreparing ? 'Waiting for host…' : 'Connecting…') : 'Join'}
+              </button>
+              <button
+                data-testid="watch-replay-btn"
+                type="button"
+                onClick={() => {
+                  const trimmed = name.trim() || 'Replay';
+                  try {
+                    localStorage.setItem(NAME_STORAGE_KEY, trimmed);
+                    localStorage.setItem(COLOR_STORAGE_KEY, color);
+                  } catch { /* playback does not need stored identity */ }
+                  networkClient.enterDemoMode(trimmed, color);
+                  void startReplay('launch-note');
+                }}
+                className="w-full mt-3 px-12 py-4 bg-white text-ink border border-zinc-200 rounded-full text-xs font-black uppercase tracking-[0.2em] hover:bg-zinc-50 transition-all cursor-pointer"
+              >
+                Watch a live run
               </button>
             </>
           )}

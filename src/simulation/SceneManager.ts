@@ -13,6 +13,7 @@ import { WorldManager } from './world/WorldManager';
 import { AgentSimulation } from './core/AgentSimulation';
 import { FlatOffice } from './FlatOffice';
 import { useCoreStore } from '../integration/store/coreStore';
+import { useSocietyStore } from '../integration/store/societyStore';
 import { getActiveAgentSet, useTeamStore } from '../integration/store/teamStore';
 import { useUiStore } from '../integration/store/uiStore';
 import { AgentBehavior, ChatMessage } from '../types';
@@ -116,6 +117,26 @@ export class SceneManager {
         });
       })
     );
+    this.unsubs.push(useSocietyStore.subscribe((state, prev) => {
+      if (state.tasks !== prev.tasks || state.negotiation !== prev.negotiation) {
+        this.syncSocietyMotion();
+      }
+    }));
+  }
+
+  /** Walk and speak from the society store, so a live run and a replay use the same drivers. */
+  private syncSocietyMotion(): void {
+    if (!this.controller) return;
+    const agents = getAllAgents(getActiveAgentSet());
+    if (agents.length === 0) return;
+    const { tasks, negotiation } = useSocietyStore.getState();
+    tasks.forEach((task, index) => {
+      const agentIndex = agents[index % agents.length].index;
+      if (task.status === 'running' || task.status === 'healing') this.setNpcWorking(agentIndex, true);
+      else if (task.status === 'done' || task.status === 'escalated') this.moveNpcToSpawn(agentIndex);
+    });
+    const lastTurn = negotiation?.transcript[negotiation.transcript.length - 1];
+    if (lastTurn) this.setNpcTalking(agents[0].index, true);
   }
 
   private async init() {
@@ -174,6 +195,7 @@ export class SceneManager {
     );
 
     this.engine.renderer.setAnimationLoop(this.animate.bind(this));
+    this.syncSocietyMotion();
 
     const roster = useRosterStore.getState();
     if (roster.self) this._onJoined(roster.self, roster.roster);
@@ -415,7 +437,12 @@ export class SceneManager {
         for (const npc of msg.npcs) {
           const renderIndex = toRenderIndex(npc.aiIndex);
           const driver = this.driverManager?.getDriver(renderIndex);
-          if (driver instanceof RemoteNpcDriver) driver.applyState(npc.pos, npc.facing, npc.animState, npc.speaking);
+          if (driver instanceof RemoteNpcDriver) {
+            driver.applyState(npc.pos, npc.facing, npc.animState, npc.speaking);
+          } else if (this.controller) {
+            this.controller.setSpeaking(renderIndex, npc.speaking);
+            if (npc.speaking && this.controller.getState(renderIndex) !== 'walk') this.controller.play(renderIndex, 'talk');
+          }
         }
         break;
       }

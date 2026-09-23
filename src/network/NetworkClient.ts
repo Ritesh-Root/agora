@@ -74,6 +74,11 @@ export class NetworkClient {
     return this.ws?.readyState === WebSocket.OPEN;
   }
 
+  /** Feed a server message through the same stores and listeners as a live socket frame. */
+  public ingest(msg: ServerMessage): void {
+    this._handleMessage(msg);
+  }
+
   public send(msg: ClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
