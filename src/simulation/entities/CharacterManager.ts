@@ -3,8 +3,8 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   atan,
-  attribute, cos, float, Fn, If, instanceIndex, mat3,
-  mat4, positionLocal, sin, storage, texture, uint, uniform, uv, vec3,
+  attribute, cos, float, Fn, If, int, ivec2, mat3,
+  mat4, positionLocal, sin, texture, textureLoad, uint, uniform, uv, vec3,
   vec4
 } from 'three/tsl';
 import * as THREE from 'three/webgpu';
@@ -12,6 +12,7 @@ import { getAllAgents, MAX_PLAYERS, toRenderIndex, USER_COLOR } from '../../data
 import { getActiveAgentSet } from '../../integration/store/teamStore';
 import { AgentBehavior, AnimationName, ExpressionKey } from '../../types';
 import { AgentStateBuffer } from '../behavior/AgentStateBuffer';
+import { stepAgentMovement } from '../behavior/cpuMovement';
 import { ExpressionBuffer } from '../behavior/ExpressionBuffer';
 import { DRACO_LIB_PATH } from '../constants';
 import { PoiManager } from '../world/PoiManager';
@@ -20,13 +21,11 @@ export class CharacterManager {
   private instanceCount = MAX_PLAYERS + getAllAgents(getActiveAgentSet()).length;
   private poiManager: PoiManager | null = null;
 
-  // Compute Buffers (GPU)
-  private posAttribute: THREE.StorageInstancedBufferAttribute | null = null;
-  private velAttribute: THREE.StorageInstancedBufferAttribute | null = null;
+  // Per-instance buffers. The CPU owns positions; the vertex shader only reads them.
+  private posAttribute: THREE.InstancedBufferAttribute | null = null;
+  private velAttribute: THREE.InstancedBufferAttribute | null = null;
   private colorAttribute: THREE.InstancedBufferAttribute | null = null;
   private accessoryAttribute: THREE.InstancedBufferAttribute | null = null;
-  private positionStorage: any;
-  private velocityStorage: any;
 
   // Agent state buffer (CPU+GPU): waypoint + behavior state per instance
   private agentStateBuffer: AgentStateBuffer | null = null;
@@ -34,7 +33,7 @@ export class CharacterManager {
   // Expression buffer (CPU+GPU): eye and mouth UV offsets per instance
   private expressionBuffer: ExpressionBuffer | null = null;
 
-  // CPU-side mirror of GPU positions (updated via GPU readback each frame)
+  // CPU-side positions. This is the same array the vertex shader uploads.
   private debugPosArray: Float32Array | null = null;
 
   // Track global time for animation resets (also drives the paused-safe shader uTime uniform)
@@ -42,7 +41,9 @@ export class CharacterManager {
   private uTime = uniform(0);
 
   // Logic Nodes
-  private computeNode: any;
+  private animTexture: THREE.DataTexture | null = null;
+  private metaTexture: THREE.DataTexture | null = null;
+  private animTexWidth = 256;
 
   // Assets & Objects
   private instancedMeshes: THREE.Mesh[] = [];
@@ -50,8 +51,6 @@ export class CharacterManager {
 
   // Animation Data
   private animationsMeta: { [key: string]: { offset: number; numFrames: number; duration: number; index: number } } = {};
-  private bakedAnimationsBuffer: THREE.StorageBufferAttribute | null = null;
-  private metaBuffer: THREE.StorageBufferAttribute | null = null;
   private numBones = 0;
   private headBoneIndex = -1;
 
@@ -144,8 +143,24 @@ export class CharacterManager {
         seek += data.length;
       }
 
-      this.bakedAnimationsBuffer = new THREE.StorageBufferAttribute(combinedData, 16);
-      this.metaBuffer = new THREE.StorageBufferAttribute(metaArray, 4);
+      const texelCount = combinedData.length / 4;
+      const width = this.animTexWidth;
+      const height = Math.max(1, Math.ceil(texelCount / width));
+      const packed = new Float32Array(width * height * 4);
+      packed.set(combinedData);
+      this.animTexture = new THREE.DataTexture(packed, width, height, THREE.RGBAFormat, THREE.FloatType);
+      this.animTexture.magFilter = THREE.NearestFilter;
+      this.animTexture.minFilter = THREE.NearestFilter;
+      this.animTexture.generateMipmaps = false;
+      this.animTexture.colorSpace = THREE.NoColorSpace;
+      this.animTexture.needsUpdate = true;
+
+      this.metaTexture = new THREE.DataTexture(metaArray, animNames.length, 1, THREE.RGBAFormat, THREE.FloatType);
+      this.metaTexture.magFilter = THREE.NearestFilter;
+      this.metaTexture.minFilter = THREE.NearestFilter;
+      this.metaTexture.generateMipmaps = false;
+      this.metaTexture.colorSpace = THREE.NoColorSpace;
+      this.metaTexture.needsUpdate = true;
 
       this.initInstances();
       this.isLoaded = true;
@@ -164,32 +179,29 @@ export class CharacterManager {
   }
 
   /**
-   * Reads back the GPU position buffer to CPU.
-   * Must be called after renderer.compute() each frame.
-   * Returns the updated positions (1-frame GPU lag).
+   * Positions are updated on the CPU. The method stays so drivers can await it.
    */
-  public async syncFromGPU(renderer: any): Promise<Float32Array | null> {
-    if (!this.posAttribute) return null;
-    try {
-      const buffer = await renderer.getArrayBufferAsync(this.posAttribute);
-      this.debugPosArray = new Float32Array(buffer);
-      // Keep the CPU-side attribute array in sync so setPosition doesn't upload stale data
-      (this.posAttribute.array as Float32Array).set(this.debugPosArray);
-    } catch {
-      // WebGPU readback not available – fall back to stale data
-    }
+  public async syncFromGPU(_renderer: any): Promise<Float32Array | null> {
     return this.debugPosArray;
   }
 
-  public update(delta: number, renderer: any) {
+  public update(delta: number, _renderer: any) {
     this.currentTime += delta;
     this.uTime.value = this.currentTime;
 
     if (this.expressionBuffer) {
       this.expressionBuffer.update(delta);
     }
-    if (this.computeNode) {
-      renderer.compute(this.computeNode);
+    if (this.posAttribute && this.velAttribute && this.agentStateBuffer) {
+      stepAgentMovement(
+        this.posAttribute.array as Float32Array,
+        this.velAttribute.array as Float32Array,
+        this.agentStateBuffer.array,
+        this.instanceCount,
+        this.uSpeed.value * 3,
+      );
+      this.posAttribute.needsUpdate = true;
+      this.velAttribute.needsUpdate = true;
     }
   }
 
@@ -198,7 +210,6 @@ export class CharacterManager {
       this.scene.remove(mesh);
     }
     this.instancedMeshes = [];
-    this.computeNode = null;
     this.expressionBuffer = null;
   }
 
@@ -267,15 +278,11 @@ export class CharacterManager {
     }
 
 
-    this.debugPosArray = new Float32Array(posArray);
-
-    this.posAttribute = new THREE.StorageInstancedBufferAttribute(posArray, 4);
-    this.velAttribute = new THREE.StorageInstancedBufferAttribute(velArray, 4);
+    this.posAttribute = new THREE.InstancedBufferAttribute(posArray, 4);
+    this.velAttribute = new THREE.InstancedBufferAttribute(velArray, 4);
+    this.debugPosArray = this.posAttribute.array as Float32Array;
     this.colorAttribute = new THREE.InstancedBufferAttribute(colorArray, 3);
     this.accessoryAttribute = new THREE.InstancedBufferAttribute(accessoryArray, 1);
-
-    this.positionStorage = storage(this.posAttribute, 'vec4', this.instanceCount);
-    this.velocityStorage = storage(this.velAttribute, 'vec4', this.instanceCount);
 
     // Physics & state buffer — all start at mode 0 (IDLE)
     this.agentStateBuffer = new AgentStateBuffer(this.instanceCount);
@@ -302,51 +309,7 @@ export class CharacterManager {
 
     this.expressionBuffer = new ExpressionBuffer(this.instanceCount);
 
-    this.initComputeNode();
     this.createInstancedMesh();
-  }
-
-  private initComputeNode() {
-    const agentStorage = this.agentStateBuffer!.storageNode;
-
-    this.computeNode = Fn(() => {
-      const index = instanceIndex;
-
-      const posElement = this.positionStorage.element(index);
-      const velElement = this.velocityStorage.element(index);
-      const agentData = agentStorage.element(index.mul(2));   // Buffer 0: (wpX, anim, wpZ, state)
-      const agentState = agentData.w;                         // float: 0=IDLE 1=GOTO 2=SEATED
-
-      const pos = posElement.xyz.toVar();
-
-      // ── Physical Logic ──────────────────────────────────────
-
-      // GOTO = 1  |  IDLE = 0  |  SEATED = 2 (treated as IDLE on GPU)
-      const isGoto = agentState.greaterThan(float(0.5)).and(agentState.lessThan(float(1.5)));
-
-      If(isGoto, () => {
-        const waypointXZ = vec3(agentData.x, float(0), agentData.z);
-        const toTarget = waypointXZ.sub(pos);
-        const dist = toTarget.length();
-        If(dist.greaterThan(float(0.2)), () => {
-          const gotoVel = toTarget.normalize().mul(this.uSpeed.mul(3.0));
-          velElement.assign(vec4(gotoVel, 0.0));
-          posElement.assign(vec4(pos.add(gotoVel), 1.0));
-        }).Else(() => {
-          // Snap X,Z to exact waypoint — CPU will transition to IDLE this frame
-          posElement.assign(vec4(agentData.x, pos.y, agentData.z, 1.0));
-        });
-
-      }).Else(() => {
-        // ── IDLE / SEATED (0 or 2) ───────────────────────────────
-        // Zero velocity so the vertex shader uses facingOverride (setFacing/setOrientation)
-        // instead of the stale walk velocity for rotation.
-        // SEATED (2) is handled identically on the GPU — the semantic difference is CPU-only.
-        velElement.assign(vec4(float(0), float(0), float(0), float(0)));
-        posElement.assign(vec4(pos, 1.0));
-      });
-
-    })().compute(this.instanceCount);
   }
 
   private createInstancedMesh() {
@@ -368,6 +331,13 @@ export class CharacterManager {
       // Solo dejamos el atributo que NO se calcula en el Compute Shader
       instancedGeometry.setAttribute('instanceColor', this.colorAttribute);
       if (this.accessoryAttribute) instancedGeometry.setAttribute('accessoryType', this.accessoryAttribute);
+      if (this.posAttribute) instancedGeometry.setAttribute('instancePosition', this.posAttribute);
+      if (this.velAttribute) instancedGeometry.setAttribute('instanceVelocity', this.velAttribute);
+      if (this.agentStateBuffer) {
+        instancedGeometry.setAttribute('agentState0', this.agentStateBuffer.state0);
+        instancedGeometry.setAttribute('agentState1', this.agentStateBuffer.state1);
+      }
+      if (this.expressionBuffer) instancedGeometry.setAttribute('expressionUv', this.expressionBuffer.attribute);
 
       const material = new THREE.MeshStandardNodeMaterial();
       material.roughness = 1;
@@ -376,8 +346,8 @@ export class CharacterManager {
       const instanceColor = attribute('instanceColor', 'vec3');
       const map = (baseMaterial as any).map;
 
-      const expressionData = this.expressionBuffer!.storageNode.element(instanceIndex);
-      const animParams = this.agentStateBuffer!.storageNode.element(instanceIndex.mul(2).add(1));
+      const expressionData = attribute('expressionUv', 'vec4');
+      const animParams = attribute('agentState1', 'vec4');
       const instanceAlpha = animParams.z;
       const accessoryType = attribute('accessoryType', 'float');
 
@@ -462,10 +432,10 @@ export class CharacterManager {
 
   private createVertexNode(isVisibleNode: any, hasSkinning: boolean) {
     return Fn(() => {
-      const instancePos = this.positionStorage.element(instanceIndex).xyz;
-      const rawVel = this.velocityStorage.element(instanceIndex).xyz;
-      const agentData = this.agentStateBuffer!.storageNode.element(instanceIndex.mul(2));
-      const animParams = this.agentStateBuffer!.storageNode.element(instanceIndex.mul(2).add(1));
+      const instancePos = attribute('instancePosition', 'vec4').xyz;
+      const rawVel = attribute('instanceVelocity', 'vec4').xyz;
+      const agentData = attribute('agentState0', 'vec4');
+      const animParams = attribute('agentState1', 'vec4');
 
       // 1. Determine local rotation (facing)
       const isMoving = rawVel.length().greaterThan(float(0.01));
@@ -489,13 +459,9 @@ export class CharacterManager {
 
       const finalPosition = positionLocal.toVar();
 
-      if (hasSkinning && this.bakedAnimationsBuffer && this.metaBuffer) {
-        const animBuffer = storage(this.bakedAnimationsBuffer, 'mat4', this.bakedAnimationsBuffer.count);
-        const metaStorage = storage(this.metaBuffer, 'vec4', this.metaBuffer.count);
-
+      if (hasSkinning && this.animTexture && this.metaTexture) {
         const animIndex = agentData.y.toUint();
-
-        const meta = metaStorage.element(animIndex);
+        const meta = textureLoad(this.metaTexture, ivec2(int(animIndex), int(0)));
         const animOffset = uint(meta.x);
         const numFrames = uint(meta.y);
         const duration = float(meta.z);
@@ -506,16 +472,23 @@ export class CharacterManager {
         const animTime = this.uTime.sub(startTime).max(0);
         const t = loopMode.greaterThan(0.5) ? animTime.div(duration).fract() : animTime.div(duration).clamp(0, 1);
 
-        const currentFrame = t.mul(numFrames.toFloat()).toUint();
-        const safeFrame = currentFrame.min(numFrames.sub(uint(1)));
+        const frameCount = numFrames.toFloat();
+        const safeFrame = uint(t.mul(frameCount).min(frameCount.sub(1.0)).max(0.0));
 
         const skinIndex = attribute('skinIndex');
         const skinWeight = attribute('skinWeight');
         const skinMat = mat4(0).toVar();
+        const texWidth = uint(this.animTexWidth);
+        const animTexture = this.animTexture;
 
         const addInfluence = (boneIdxNode: any, weightNode: any) => {
           const address = animOffset.add(safeFrame.mul(uint(this.numBones))).add(boneIdxNode.toUint());
-          skinMat.addAssign(animBuffer.element(address).mul(weightNode));
+          const texel = address.mul(uint(4));
+          const column = (offset: number) => {
+            const index = texel.add(uint(offset));
+            return textureLoad(animTexture, ivec2(int(index.mod(texWidth)), int(index.div(texWidth))));
+          };
+          skinMat.addAssign(mat4(column(0), column(1), column(2), column(3)).mul(weightNode));
         };
 
         addInfluence(skinIndex.x, skinWeight.x);

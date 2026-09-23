@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-Then open the URL printed by Vite (default `http://localhost:3000`).
+Then open the URL printed by Vite (default `http://localhost:3000`). The office renders in current Chrome, Firefox, and Safari. It uses WebGPU when that is available and WebGL2 otherwise. Add `?renderer=webgl` to force WebGL2. `./run-agora.sh` is only an optional launcher for hardware WebGPU.
 
 Useful scripts:
 

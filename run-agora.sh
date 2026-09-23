@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# AGORA launcher — opens the app in Chrome with WebGPU enabled.
+# AGORA launcher — optional hardware WebGPU.
 #
-# The Office 3D view runs the agent simulation on GPU compute shaders, which is
-# WebGPU-only. On Linux, Chrome exposes the WebGPU API but returns NO adapter
-# unless --enable-unsafe-webgpu is set (and on hybrid AMD+NVIDIA laptops Vulkan
-# is blocked by default), so the canvas renders blank. This launcher fixes that.
+# The office renders without this script, on WebGPU or WebGL2. Use this only
+# when you want Chrome's hardware WebGPU adapter on Linux.
 #
-# Default: software WebGPU (SwiftShader) — verified stable on this machine.
-# Opt-in:  AGORA_HW=1 ./run-agora.sh  → tries hardware WebGPU (Vulkan). Faster,
-#          but can be unstable on hybrid GPUs (WebGPU "device lost").
+# Default: software WebGPU (SwiftShader).
+# Opt-in:  AGORA_HW=1 ./run-agora.sh  → hardware WebGPU (Vulkan). Faster, but
+#          hybrid GPUs can lose the device.
 #
 # Usage:  ./run-agora.sh              # assumes dev server already on :3000
 #         ./run-agora.sh --serve      # also starts `npm run dev` first
-#         AGORA_HW=1 ./run-agora.sh   # experimental hardware WebGPU
+#         AGORA_HW=1 ./run-agora.sh   # hardware WebGPU
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 

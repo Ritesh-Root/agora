@@ -16,7 +16,8 @@ User requested a complete UI restyle (new frontend) for the existing app. Instru
 - Supervisor `frontend` runs a shim: /app/frontend/package.json → `npm --prefix /app run dev` (vite on port 3000). Supervisor `backend` is FATAL by design (no python backend) — ignore.
 - vite.config.ts: `allowedHosts: true` added for preview domain.
 - Deps installed via `npm ci` (package-lock.json; yarn fails on vitest/vite linking).
-- 3D office needs WebGPU → shows fallback message in headless browsers (expected).
+- The 3D office runs on WebGPU when the browser has it, and on WebGL2 otherwise. `?renderer=webgl` forces WebGL2. A software GPU turns shadows off, caps the pixel ratio at 1, and skips antialiasing. If WebGL2 is missing too, the office tab draws a flat top-down view.
+- `./run-agora.sh` is an optional launcher for hardware WebGPU. The office does not need Chrome flags.
 
 ## Layout (unchanged structure, restyled)
 Header (top nav) | left: ActionLogPanel (Activity/Technical) | center: SimulationView (Office 3D / Obsidian Graph tabs) + KanbanPanel drawer | right: InspectorPanel (Project Info / agent inspector / chat). Modals: Join, Brief (Run Swarm / Swarm Bench), BYOK, Negotiation Arena, Manage Teams (VisualConfigurator), Info, Audit, FinalOutput, OutputReview, Society, Benchmark, Pricing, Reset.

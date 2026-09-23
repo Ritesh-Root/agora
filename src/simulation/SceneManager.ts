@@ -11,6 +11,7 @@ import { PoiManager } from './world/PoiManager';
 import { WorldManager } from './world/WorldManager';
 
 import { AgentSimulation } from './core/AgentSimulation';
+import { FlatOffice } from './FlatOffice';
 import { useCoreStore } from '../integration/store/coreStore';
 import { getActiveAgentSet, useTeamStore } from '../integration/store/teamStore';
 import { useUiStore } from '../integration/store/uiStore';
@@ -40,6 +41,7 @@ export class SceneManager {
   private worldManager: WorldManager;
   private driverManager: DriverManager | null = null;
   private simulation: AgentSimulation | null = null;
+  private flatOffice: FlatOffice | null = null;
 
   private lastAgentSetId: string | null = null;
   private selectedIndex: number | null = null;
@@ -79,24 +81,10 @@ export class SceneManager {
     this.unsubs.push(networkClient.onMessage((msg) => this._onNetworkMessage(msg)));
   }
 
-  private showRendererError(webgpuUnavailable = false) {
-    const el = document.createElement('div');
-    el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;padding:32px;text-align:center;font:500 14px Inter,system-ui,sans-serif;color:#52525b;background:#ffffff;z-index:1;';
-
-    if (webgpuUnavailable) {
-      const flags = '--enable-unsafe-webgpu';
-      el.innerHTML =
-        '<div style="font-weight:900;font-size:20px;color:#18181b;letter-spacing:-0.02em;">The 3D office needs WebGPU</div>' +
-        '<div style="max-width:440px;line-height:1.5;">This browser exposes no WebGPU adapter, so the GPU-accelerated agent simulation can’t run. The <b>Obsidian Graph</b> tab works without it.</div>' +
-        '<div style="max-width:460px;line-height:1.6;color:#71717a;">On Linux, relaunch Chrome with this flag (or run <b>./run-agora.sh</b> in the project):</div>' +
-        `<code style="display:block;max-width:520px;background:#f4f4f5;border:1px solid #e4e4e7;border-radius:10px;padding:10px 14px;font:600 11px ui-monospace,monospace;color:#3f3f46;word-break:break-all;">google-chrome ${flags} http://localhost:3000</code>` +
-        '<div style="font-size:12px;color:#a1a1aa;">Persistent alternative: enable <b>#enable-unsafe-webgpu</b> at <b>chrome://flags</b>. For GPU acceleration: <b>AGORA_HW=1 ./run-agora.sh</b>.</div>';
-    } else {
-      el.innerHTML =
-        '<div style="font-weight:900;font-size:20px;color:#18181b;">AGORA needs WebGPU</div>' +
-        '<div style="max-width:420px;line-height:1.5;">Open this app in a recent <b>Chrome</b> or <b>Edge</b> with hardware acceleration enabled.</div>';
-    }
-    this.container.appendChild(el);
+  private mountFlatOffice() {
+    if (this.flatOffice) return;
+    this.flatOffice = new FlatOffice(this.container, this.engine);
+    this.flatOffice.start();
   }
 
   private startWatchingCoreStore() {
@@ -135,13 +123,12 @@ export class SceneManager {
       await this.engine.init();
       if (this.isDisposed) return;
       if (!this.engine.initialized) {
-        // No GPU backend — show a clear message instead of looping a dead renderer.
-        this.showRendererError(this.engine.webgpuUnavailable);
+        this.mountFlatOffice();
         return;
       }
     } catch (e) {
       console.error("Engine initialization failed:", e);
-      this.showRendererError();
+      this.mountFlatOffice();
       return;
     }
 
@@ -605,5 +592,5 @@ export class SceneManager {
     this.stage.setChatMode(false, false);
   }
 
-  public dispose() { this.isDisposed = true; this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.driverManager?.dispose(); this.engine.dispose(); }
+  public dispose() { this.isDisposed = true; this.resizeObserver.disconnect(); this.unsubs.forEach(u => u()); this.flatOffice?.stop(); this.driverManager?.dispose(); this.engine.dispose(); }
 }

@@ -1,4 +1,3 @@
-import { storage } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { AtlasCoords, ExpressionKey } from '../../types';
 import {
@@ -34,8 +33,7 @@ export const SPEAKING_MOUTH_FRAMES: AtlasCoords[] = [
  */
 export class ExpressionBuffer {
   public readonly array: Float32Array;
-  public readonly attribute: THREE.StorageInstancedBufferAttribute;
-  public readonly storageNode: any;
+  public readonly attribute: THREE.InstancedBufferAttribute;
 
   private speakingStates: boolean[] = [];
   private speakingFrames: number[] = [];
@@ -46,8 +44,7 @@ export class ExpressionBuffer {
 
   constructor(private readonly count: number) {
     this.array = new Float32Array(count * 4);
-    this.attribute = new THREE.StorageInstancedBufferAttribute(this.array, 4);
-    this.storageNode = storage(this.attribute, 'vec4', count);
+    this.attribute = new THREE.InstancedBufferAttribute(this.array, 4);
 
     for (let i = 0; i < count; i++) {
       this.speakingStates[i] = false;

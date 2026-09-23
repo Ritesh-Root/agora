@@ -1,4 +1,3 @@
-import { storage } from 'three/tsl';
 import * as THREE from 'three/webgpu';
 import { MAX_PLAYERS } from '../../data/agents';
 import { AgentBehavior } from '../../types';
@@ -20,26 +19,32 @@ import { AgentBehavior } from '../../types';
  *   .z = alpha       (1.0 = opaque, <1.0 = transparent)
  *   .w = (unused)
  *
- * CPU writes metadata, GPU shader reads them.
+ * CPU writes metadata. The vertex shader reads two instanced vec4s.
  */
 export class AgentStateBuffer {
   /** Raw Float32Array (8 floats per instance). */
   public readonly array: Float32Array;
 
-  /** GPU buffer attribute. */
-  public readonly attribute: THREE.StorageInstancedBufferAttribute;
+  /** Waypoint, animation index, and mode. */
+  public readonly state0: THREE.InterleavedBufferAttribute;
 
-  /** TSL storage node. */
-  public readonly storageNode: any;
+  /** Start time, loop flag, and alpha. */
+  public readonly state1: THREE.InterleavedBufferAttribute;
+
+  private readonly interleaved: THREE.InstancedInterleavedBuffer;
 
   constructor(private readonly count: number) {
     this.array = new Float32Array(count * 8);
-    // Initialize alpha to 1.0 (opaque)
     for (let i = 0; i < count; i++) {
       this.array[i * 8 + 6] = 1.0;
     }
-    this.attribute = new THREE.StorageInstancedBufferAttribute(this.array, 8);
-    this.storageNode = storage(this.attribute, 'vec4', count * 2);
+    this.interleaved = new THREE.InstancedInterleavedBuffer(this.array, 8);
+    this.state0 = new THREE.InterleavedBufferAttribute(this.interleaved, 4, 0);
+    this.state1 = new THREE.InterleavedBufferAttribute(this.interleaved, 4, 4);
+  }
+
+  private touch(): void {
+    this.interleaved.needsUpdate = true;
   }
 
   // ── Mode/State ───────────────────────────────────────────────
@@ -50,7 +55,7 @@ export class AgentStateBuffer {
 
   public setState(index: number, state: number): void {
     this.array[index * 8 + 3] = state;
-    this.attribute.needsUpdate = true;
+    this.touch();
   }
 
   // ── Animation ────────────────────────────────────────────────
@@ -63,14 +68,14 @@ export class AgentStateBuffer {
     this.array[index * 8 + 1] = animIndex;
     this.array[index * 8 + 4] = startTime;
     this.array[index * 8 + 5] = loop ? 1.0 : 0.0;
-    this.attribute.needsUpdate = true;
+    this.touch();
   }
 
   // ── Transparency ─────────────────────────────────────────────
 
   public setAlpha(index: number, alpha: number): void {
     this.array[index * 8 + 6] = alpha;
-    this.attribute.needsUpdate = true;
+    this.touch();
   }
 
   public getAlpha(index: number): number {
@@ -82,14 +87,14 @@ export class AgentStateBuffer {
   public setWaypoint(index: number, x: number, z: number): void {
     this.array[index * 8 + 0] = x;
     this.array[index * 8 + 2] = z;
-    this.attribute.needsUpdate = true;
+    this.touch();
   }
 
   /** Used when mode is IDLE to force a specific facing direction. */
   public setFacing(index: number, x: number, z: number): void {
     this.array[index * 8 + 0] = x;
     this.array[index * 8 + 2] = z;
-    this.attribute.needsUpdate = true;
+    this.touch();
   }
 
   public getWaypoint(index: number): { x: number; z: number } {
@@ -106,6 +111,6 @@ export class AgentStateBuffer {
     for (let i = startIndex; i < this.count; i++) {
       this.array[i * 8 + 3] = state;
     }
-    this.attribute.needsUpdate = true;
+    this.touch();
   }
 }
