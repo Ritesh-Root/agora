@@ -1,5 +1,7 @@
-/** Same step the old GPU compute pass used. Speed is units per frame, not per second. */
+/** Distance the old GPU pass moved in one 60fps frame. */
 export const DEFAULT_STEP = 0.015 * 3;
+const REF_FRAME = 1 / 60;
+const MAX_DELTA = 1 / 20;
 const ARRIVE = 0.2;
 
 export function stepAgentMovement(
@@ -8,7 +10,9 @@ export function stepAgentMovement(
   state: Float32Array,
   count: number,
   speed = DEFAULT_STEP,
+  delta = REF_FRAME,
 ): void {
+  const step = speed * (Math.min(Math.max(delta, 0), MAX_DELTA) / REF_FRAME);
   for (let i = 0; i < count; i++) {
     const p = i * 4;
     const s = i * 8;
@@ -28,9 +32,9 @@ export function stepAgentMovement(
     const dz = state[s + 2] - positions[p + 2];
     const dist = Math.hypot(dx, dy, dz);
     if (dist > ARRIVE) {
-      const vx = (dx / dist) * speed;
-      const vy = (dy / dist) * speed;
-      const vz = (dz / dist) * speed;
+      const vx = (dx / dist) * step;
+      const vy = (dy / dist) * step;
+      const vz = (dz / dist) * step;
       velocities[p] = vx;
       velocities[p + 1] = vy;
       velocities[p + 2] = vz;

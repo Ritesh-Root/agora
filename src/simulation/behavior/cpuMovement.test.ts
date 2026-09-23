@@ -54,4 +54,12 @@ describe('cpu agent movement', () => {
     expect(positions[0]).toBe(2);
     expect(velocities[0]).toBe(0);
   });
+
+  it('moves twice as far when the frame is twice as long', () => {
+    const { positions, velocities, state } = buffers();
+    state[0] = 10;
+    state[3] = 1;
+    stepAgentMovement(positions, velocities, state, 1, DEFAULT_STEP, 1 / 30);
+    expect(positions[0]).toBeCloseTo(DEFAULT_STEP * 2, 5);
+  });
 });

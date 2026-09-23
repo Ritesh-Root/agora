@@ -3,8 +3,8 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   atan,
-  attribute, cos, float, Fn, If, int, ivec2, mat3,
-  mat4, positionLocal, sin, texture, textureLoad, uint, uniform, uv, vec3,
+  attribute, cos, float, floor, Fn, If, int, ivec2, mat3,
+  mat4, mix, mod, positionLocal, sin, texture, textureLoad, uint, uniform, uv, vec3,
   vec4
 } from 'three/tsl';
 import * as THREE from 'three/webgpu';
@@ -199,6 +199,7 @@ export class CharacterManager {
         this.agentStateBuffer.array,
         this.instanceCount,
         this.uSpeed.value * 3,
+        delta,
       );
       this.posAttribute.needsUpdate = true;
       this.velAttribute.needsUpdate = true;
@@ -473,30 +474,42 @@ export class CharacterManager {
         const t = loopMode.greaterThan(0.5) ? animTime.div(duration).fract() : animTime.div(duration).clamp(0, 1);
 
         const frameCount = numFrames.toFloat();
-        const safeFrame = uint(t.mul(frameCount).min(frameCount.sub(1.0)).max(0.0));
+        const frameFloat = t.mul(frameCount).max(0.0);
+        const frame0f = floor(frameFloat).min(frameCount.sub(1.0));
+        const blend = frameFloat.sub(frame0f);
+        const frame1f = loopMode.greaterThan(0.5)
+          ? mod(frame0f.add(1.0), frameCount)
+          : frame0f.add(1.0).min(frameCount.sub(1.0));
 
         const skinIndex = attribute('skinIndex');
         const skinWeight = attribute('skinWeight');
-        const skinMat = mat4(0).toVar();
         const texWidth = uint(this.animTexWidth);
         const animTexture = this.animTexture;
+        const local = vec4(positionLocal, 1.0);
 
-        const addInfluence = (boneIdxNode: any, weightNode: any) => {
-          const address = animOffset.add(safeFrame.mul(uint(this.numBones))).add(boneIdxNode.toUint());
-          const texel = address.mul(uint(4));
-          const column = (offset: number) => {
-            const index = texel.add(uint(offset));
-            return textureLoad(animTexture, ivec2(int(index.mod(texWidth)), int(index.div(texWidth))));
+        const skinnedAt = (frame: ReturnType<typeof uint>) => {
+          const skinMat = mat4(0).toVar();
+          const addInfluence = (boneIdxNode: any, weightNode: any) => {
+            const address = animOffset.add(frame.mul(uint(this.numBones))).add(boneIdxNode.toUint());
+            const texel = address.mul(uint(4));
+            const column = (offset: number) => {
+              const index = texel.add(uint(offset));
+              return textureLoad(animTexture, ivec2(int(index.mod(texWidth)), int(index.div(texWidth))));
+            };
+            skinMat.addAssign(mat4(column(0), column(1), column(2), column(3)).mul(weightNode));
           };
-          skinMat.addAssign(mat4(column(0), column(1), column(2), column(3)).mul(weightNode));
+          addInfluence(skinIndex.x, skinWeight.x);
+          addInfluence(skinIndex.y, skinWeight.y);
+          addInfluence(skinIndex.z, skinWeight.z);
+          addInfluence(skinIndex.w, skinWeight.w);
+          return skinMat.mul(local).xyz;
         };
 
-        addInfluence(skinIndex.x, skinWeight.x);
-        addInfluence(skinIndex.y, skinWeight.y);
-        addInfluence(skinIndex.z, skinWeight.z);
-        addInfluence(skinIndex.w, skinWeight.w);
-
-        finalPosition.assign(skinMat.mul(vec4(positionLocal, 1.0)).xyz);
+        finalPosition.assign(mix(
+          skinnedAt(uint(frame0f)),
+          skinnedAt(uint(frame1f)),
+          blend,
+        ));
       }
 
       const vertexScale = isVisibleNode.select(float(1), float(0));
