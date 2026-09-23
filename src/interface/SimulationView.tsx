@@ -1,4 +1,4 @@
-import { Maximize2, Minimize2, Eye, Network, Building2 } from 'lucide-react';
+import { Maximize2, Minimize2, Eye, Network, Building2, Hash } from 'lucide-react';
 import React, { useState } from 'react';
 import { useCoreStore } from '../integration/store/coreStore';
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore';
@@ -10,6 +10,7 @@ import { AuditModal } from './AuditModal';
 import { TeamBadge } from './components/TeamBadge';
 import { TeamOutputBadge } from './components/TeamOutputBadge';
 import { ObsidianGraphView } from './ObsidianGraphView';
+import PublicRoom from './PublicRoom';
 
 interface SimulationViewProps {
   canvasRef: React.RefObject<HTMLDivElement>;
@@ -21,7 +22,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ canvasRef, isFullscreen
   const { selectedNpcIndex, activeAuditTaskId, setActiveAuditTaskId } = useUiStore();
   const activeSet = useActiveTeam();
   const [isFlowModalOpen, setIsFlowModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'office' | 'graph'>('office');
+  const [activeTab, setActiveTab] = useState<'office' | 'graph' | 'room'>('office');
 
   React.useEffect(() => {
     if (activeAuditTaskId) {
@@ -75,6 +76,18 @@ const SimulationView: React.FC<SimulationViewProps> = ({ canvasRef, isFullscreen
               <Network size={10} />
               Obsidian Graph
             </button>
+            <button
+              data-testid="tab-public-room"
+              onClick={() => setActiveTab('room')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'room'
+                  ? 'bg-ink text-white shadow-sm'
+                  : 'text-zinc-500 hover:text-ink'
+              }`}
+            >
+              <Hash size={10} />
+              Public room
+            </button>
           </div>
         </div>
 
@@ -96,6 +109,8 @@ const SimulationView: React.FC<SimulationViewProps> = ({ canvasRef, isFullscreen
             <ObsidianGraphView />
           </div>
         )}
+
+        {activeTab === 'room' && <PublicRoom />}
 
         {/* ThreeJS viewport — visibility: hidden instead of display: none to prevent Canvas/WebGL context loss */}
         <div 

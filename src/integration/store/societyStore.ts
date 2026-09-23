@@ -42,7 +42,7 @@ export interface BenchmarkResult {
   qualityScores: {
     society: number;
     single: number;
-  };
+  } | null;
 }
 
 interface SocietyState {

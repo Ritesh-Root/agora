@@ -81,7 +81,7 @@ export class NvidiaProvider implements LLMProvider {
       // qwen3.5 NIM backends 500 ("unit variant") unless max_completion_tokens is present;
       // other NIM models tolerate both, so always send both.
       max_completion_tokens: 8192,
-      temperature: 1,
+      temperature: tools?.length ? 0.3 : 1,
       top_p: 0.95,
       stream: false,
     };

@@ -22,6 +22,14 @@ export interface RemoteNpcState {
   speaking: boolean;
 }
 
+export interface RoomChatMessage {
+  id: string;
+  playerId: string;
+  name: string;
+  text: string;
+  timestamp: number;
+}
+
 export interface SocietyResultWire {
   brief: string;
   tasks: Array<{
@@ -33,6 +41,8 @@ export interface SocietyResultWire {
     attempts: number;
     healed: boolean;
   }>;
+  /** Lead-merged document. Distinct from negotiation.synthesis. */
+  synthesis?: string;
   negotiation?: {
     topic: string;
     rounds: number;
@@ -57,8 +67,9 @@ export type ClientMessage =
   | { type: 'npc-state'; npcs: RemoteNpcState[] }
   | { type: 'leave' }
   | { type: 'register-cabins'; cabinPoiIds: string[] }
-  | { type: 'run-society'; brief: string }
-  | { type: 'run-benchmark'; brief: string };
+  | { type: 'run-society'; brief: string; baseUrl?: string; apiKey?: string; model?: string }
+  | { type: 'run-benchmark'; brief: string; baseUrl?: string; apiKey?: string; model?: string }
+  | { type: 'room-chat'; text: string };
 
 export type ServerMessage =
   | { type: 'joined'; me: PlayerInfo; roster: PlayerInfo[] }
@@ -73,4 +84,6 @@ export type ServerMessage =
   | { type: 'society-negotiation'; topic: string; round: number; agent: string; argument: string; scores?: Array<{ agent: string; score: number; reason: string }> }
   | { type: 'society-complete'; result: SocietyResultWire }
   | { type: 'society-error'; error: string }
-  | { type: 'benchmark-result'; society: SocietyResultWire; single: { output: string; wallMs: number; model: string }; qualityScores: { society: number; single: number } };
+  | { type: 'room-chat'; message: RoomChatMessage }
+  | { type: 'room-chat-history'; messages: RoomChatMessage[] }
+  | { type: 'benchmark-result'; society: SocietyResultWire; single: { output: string; wallMs: number; model: string }; qualityScores: { society: number; single: number } | null };

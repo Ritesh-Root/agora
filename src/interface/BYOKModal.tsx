@@ -16,6 +16,8 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
 
   const [provider, setProvider] = useState<ProviderId>(llmConfig.provider || DEFAULT_PROVIDER);
   const [apiKey, setApiKey] = useState<string>(llmConfig.apiKey || '');
+  const [baseUrl, setBaseUrl] = useState<string>(llmConfig.baseUrl || PROVIDERS[llmConfig.provider || DEFAULT_PROVIDER].baseUrl);
+  const [model, setModel] = useState<string>(llmConfig.model || PROVIDERS[llmConfig.provider || DEFAULT_PROVIDER].defaultModel);
   const [showKey, setShowKey] = useState(false);
   const [isErrorExpanded, setIsErrorExpanded] = useState(false);
 
@@ -25,7 +27,8 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
     const config = {
       provider,
       apiKey: apiKey.trim(),
-      model: spec.defaultModel,
+      baseUrl: baseUrl.trim() || spec.baseUrl,
+      model: model.trim() || spec.defaultModel,
     };
     setLlmConfig(config);
     try {
@@ -76,8 +79,8 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
             <h2 className="text-3xl font-black text-ink tracking-tight mb-2">
               {spec.label} API Key
             </h2>
-            <p className="text-zinc-400 text-sm font-medium leading-relaxed max-w-[260px]">
-              Use a <code>{spec.keyPlaceholder}</code> key for all agents. The key stays in this browser.
+            <p className="text-zinc-400 text-sm font-medium leading-relaxed">
+              Any OpenAI-compatible endpoint. The key stays in this browser. Pick a preset or type your own base URL and model id.
             </p>
           </div>
 
@@ -87,7 +90,11 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setProvider(p.id)}
+                onClick={() => {
+                  setProvider(p.id);
+                  setBaseUrl(p.baseUrl);
+                  setModel(p.defaultModel);
+                }}
                 className={`flex-1 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer ${
                   provider === p.id
                     ? 'bg-ink text-white shadow'
@@ -129,6 +136,32 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
             );
           })()}
 
+
+          <div className="mb-4">
+            <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3 ml-1">
+              Base URL
+            </label>
+            <input
+              data-testid="byok-base-url"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder="https://api.example.com/v1"
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-3xl px-6 py-3 text-sm text-ink font-mono placeholder:text-zinc-400 placeholder:font-sans focus:outline-none focus:border-butter-600"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3 ml-1">
+              Model id
+            </label>
+            <input
+              data-testid="byok-model"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder={spec.defaultModel}
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-3xl px-6 py-3 text-sm text-ink font-mono placeholder:text-zinc-400 placeholder:font-sans focus:outline-none focus:border-butter-600"
+            />
+          </div>
 
           {/* API Key input */}
           <div className="mb-4">

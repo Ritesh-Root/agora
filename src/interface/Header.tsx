@@ -40,11 +40,24 @@ const Header: React.FC = () => {
     if (!briefInput.trim()) return;
     
     if (briefType === 'society') {
-      networkClient.send({ type: 'run-society', brief: briefInput.trim() });
+      const config = useUiStore.getState().llmConfig;
+      networkClient.send({
+        type: 'run-society',
+        brief: briefInput.trim(),
+        apiKey: config.apiKey,
+        baseUrl: config.baseUrl,
+        model: config.model,
+      });
     } else {
-      // open the panel locally — the relay only sends the final benchmark-result
+      const config = useUiStore.getState().llmConfig;
       useSocietyStore.getState().startBenchmark(briefInput.trim());
-      networkClient.send({ type: 'run-benchmark', brief: briefInput.trim() });
+      networkClient.send({
+        type: 'run-benchmark',
+        brief: briefInput.trim(),
+        apiKey: config.apiKey,
+        baseUrl: config.baseUrl,
+        model: config.model,
+      });
     }
     
     setBriefInput('');

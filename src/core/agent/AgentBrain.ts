@@ -1,5 +1,5 @@
 import { LLMMessage } from '../llm/types';
-import { createProvider, isValidKey, modelsForProvider, defaultModelFor } from '../llm/providers';
+import { createProvider, isValidKey, defaultModelFor } from '../llm/providers';
 import { PROVIDERS, DEFAULT_PROVIDER } from '../llm/constants';
 import { useUiStore } from '../../integration/store/uiStore';
 import { useCoreStore } from '../../integration/store/coreStore';
@@ -46,11 +46,10 @@ export class AgentBrain {
         throw new Error(`A valid ${spec.label} API key (${spec.keyPlaceholder}) is required`);
       }
 
-      const llm = createProvider(provider, llmConfig.apiKey);
-      const allowedModels = modelsForProvider(provider);
-      const model = this.host.data.model && allowedModels.includes(this.host.data.model)
-        ? this.host.data.model
-        : (llmConfig.model && allowedModels.includes(llmConfig.model) ? llmConfig.model : defaultModelFor(provider));
+      const llm = createProvider(provider, llmConfig.apiKey, llmConfig.baseUrl);
+      const configured = llmConfig.model?.trim() || defaultModelFor(provider);
+      const agentModel = this.host.data.model;
+      const model = agentModel && agentModel !== defaultModelFor(DEFAULT_PROVIDER) ? agentModel : configured;
 
       // 1. Manage Message History
       if (!options.isChat) {

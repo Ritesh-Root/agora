@@ -1,19 +1,29 @@
-import { MAX_PLAYERS, PlayerInfo } from '../shared/protocol';
+import { MAX_PLAYERS, PlayerInfo, RoomChatMessage } from '../shared/protocol';
+
+const MAX_CHAT = 100;
+
+/** Returns trimmed chat text, or null when it should be dropped. */
+export function normalizeChatText(text: unknown): string | null {
+  if (typeof text !== 'string') return null;
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 2000) return null;
+  return trimmed;
+}
 
 /**
  * Pure roster/slot/cabin bookkeeping for the relay. No socket knowledge —
  * server/relay.ts owns the actual WebSocket connections and calls into this.
  *
- * The first connection to join becomes host. This is a simplification valid
- * for Phase 1: the relay only runs on the host's own laptop, and the host's
- * own browser tab is expected to connect (and register cabins) before the
- * LAN address is shared with anyone else. Host disconnect/migration mid-session
- * is not handled — out of scope for Phase 1.
+ * The first connection to join becomes host. Cabins are optional at join time:
+ * a 3D office may still be loading, or the host browser may have no WebGPU.
+ * The first client that has a loaded office may publish cabin ids; later
+ * joiners are not turned away while that list is empty.
  */
 export class RoomState {
   private players = new Map<string, PlayerInfo>();
   private cabinPoiIds: string[] | null = null;
   private hostId: string | null = null;
+  private chat: RoomChatMessage[] = [];
 
   public cabinsReady(): boolean {
     return this.cabinPoiIds !== null;
@@ -44,12 +54,8 @@ export class RoomState {
     id: string,
     name: string,
     color: string
-  ): { ok: true; info: PlayerInfo } | { ok: false; reason: 'room-full' | 'cabins-not-ready' } {
+  ): { ok: true; info: PlayerInfo } | { ok: false; reason: 'room-full' } {
     const isHost = this.hostId === null;
-    if (!isHost && !this.cabinsReady()) {
-      return { ok: false, reason: 'cabins-not-ready' };
-    }
-
     const slotIndex = this.nextFreeSlot();
     if (slotIndex === null) {
       return { ok: false, reason: 'room-full' };
@@ -68,9 +74,11 @@ export class RoomState {
     return { ok: true, info };
   }
 
-  /** Returns the updated roster if registration succeeded (caller is host), else null. */
+  /** First loaded office publishes cabins. The host may replace that list later. */
   public registerCabins(id: string, cabinPoiIds: string[]): PlayerInfo[] | null {
-    if (id !== this.hostId) return null;
+    if (!this.players.has(id)) return null;
+    if (!cabinPoiIds.length) return null;
+    if (this.cabinPoiIds && id !== this.hostId) return null;
     this.cabinPoiIds = cabinPoiIds;
     // Backfill the host's own cabin — it joined before any cabins existed.
     for (const player of this.players.values()) {
@@ -91,5 +99,15 @@ export class RoomState {
 
   public getRoster(): PlayerInfo[] {
     return Array.from(this.players.values());
+  }
+
+  public addChat(message: RoomChatMessage): RoomChatMessage[] {
+    this.chat.push(message);
+    if (this.chat.length > MAX_CHAT) this.chat.splice(0, this.chat.length - MAX_CHAT);
+    return this.chat;
+  }
+
+  public getChat(): RoomChatMessage[] {
+    return this.chat;
   }
 }

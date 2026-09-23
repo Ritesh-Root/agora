@@ -78,7 +78,7 @@ export class QwenProvider implements LLMProvider {
       model: modelName,
       messages: requestMessages,
       max_tokens: 8192,
-      temperature: 1,
+      temperature: tools?.length ? 0.3 : 1,
       top_p: 0.95,
       stream: false,
     };

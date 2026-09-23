@@ -4,11 +4,27 @@ import type { WebSocket as WsSocket } from 'ws';
 import type { Plugin, ViteDevServer } from 'vite';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { ClientMessage, ServerMessage } from '../shared/protocol';
-import { RoomState } from './roomState';
+import { normalizeChatText, RoomState } from './roomState';
 import { runSociety } from './society/Orchestrator';
-import { runNegotiation } from './society/Negotiation';
+import { leadNotesFromConflict } from './society/leadNotes';
 import { runBenchmark } from './bench/runner';
 import { createServerProvider } from './society/provider';
+import { assertPublicHttpsTarget, MAX_PROXY_BODY } from './proxyGuard';
+
+function chatUrl(baseUrl: string): string {
+  const root = baseUrl.trim().replace(/\/$/, '');
+  return root.endsWith('/chat/completions') ? root : `${root}/chat/completions`;
+}
+
+async function providerFromClient(msg: { apiKey?: string; baseUrl?: string }) {
+  const apiKey = msg.apiKey?.trim() || process.env.DASHSCOPE_API_KEY || '';
+  if (!apiKey) {
+    throw new Error('Add an API key in the app, or set DASHSCOPE_API_KEY on the server.');
+  }
+  const baseUrl = msg.baseUrl?.trim();
+  if (baseUrl) await assertPublicHttpsTarget(chatUrl(baseUrl));
+  return createServerProvider(apiKey, baseUrl ? { baseUrl: chatUrl(baseUrl) } : undefined);
+}
 
 const RELAY_PATH = '/__relay';
 
@@ -43,10 +59,29 @@ export function relayPlugin(): Plugin {
             return;
           }
 
-          let bodyStr = '';
-          req.on('data', chunk => { bodyStr += chunk; });
+          let settled = false;
+          const fail = (status: number, error: string) => {
+            if (settled) return;
+            settled = true;
+            res.writeHead(status, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error }));
+          };
+
+          const chunks: Buffer[] = [];
+          let size = 0;
+          req.on('data', (chunk: Buffer) => {
+            size += chunk.length;
+            if (size > MAX_PROXY_BODY) {
+              fail(413, 'Request body too large');
+              req.destroy();
+              return;
+            }
+            chunks.push(chunk);
+          });
           req.on('end', async () => {
+            if (settled) return;
             try {
+              const url = await assertPublicHttpsTarget(targetUrl);
               const headers: Record<string, string> = {
                 'Content-Type': 'application/json',
               };
@@ -57,13 +92,15 @@ export function relayPlugin(): Plugin {
                 headers['Accept'] = req.headers.accept as string;
               }
 
-              const response = await fetch(targetUrl, {
+              const response = await fetch(url, {
                 method: 'POST',
                 headers,
-                body: bodyStr,
+                body: Buffer.concat(chunks),
               });
 
               const text = await response.text();
+              if (settled) return;
+              settled = true;
               res.writeHead(response.status, {
                 'Content-Type': response.headers.get('content-type') || 'application/json',
                 'Access-Control-Allow-Origin': '*',
@@ -71,8 +108,9 @@ export function relayPlugin(): Plugin {
               res.end(text);
             } catch (err) {
               console.error('[CORS Proxy Error]:', err);
-              res.writeHead(500, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }));
+              const message = err instanceof Error ? err.message : String(err);
+              const blocked = message === 'Invalid target URL' || message.includes('not allowed') || message.includes('https');
+              fail(blocked ? 400 : 500, message);
             }
           });
           return;
@@ -126,7 +164,7 @@ export function relayPlugin(): Plugin {
       wss.on('connection', (ws: WsSocket) => {
         let playerId: string | null = null;
 
-        ws.on('message', (raw) => {
+        ws.on('message', async (raw) => {
           let msg: ClientMessage;
           try {
             msg = JSON.parse(raw.toString());
@@ -140,7 +178,7 @@ export function relayPlugin(): Plugin {
               const id = randomUUID();
               const result = room.join(id, msg.name, msg.color);
               if (!result.ok) {
-                const { reason } = result as { ok: false; reason: 'room-full' | 'cabins-not-ready' };
+                const { reason } = result as { ok: false; reason: 'room-full' };
                 send(ws, { type: reason });
                 ws.close();
                 return;
@@ -148,7 +186,24 @@ export function relayPlugin(): Plugin {
               playerId = id;
               sockets.set(id, ws);
               send(ws, { type: 'joined', me: result.info, roster: room.getRoster() });
+              send(ws, { type: 'room-chat-history', messages: room.getChat() });
               broadcastExcept(id, { type: 'roster-update', roster: room.getRoster() });
+              break;
+            }
+            case 'room-chat': {
+              if (!playerId) return;
+              const text = normalizeChatText(msg.text);
+              const player = room.getRoster().find((p) => p.id === playerId);
+              if (!text || !player) return;
+              const message = {
+                id: randomUUID(),
+                playerId,
+                name: player.name,
+                text,
+                timestamp: Date.now(),
+              };
+              room.addChat(message);
+              broadcastAll({ type: 'room-chat', message });
               break;
             }
             case 'register-cabins': {
@@ -179,6 +234,10 @@ export function relayPlugin(): Plugin {
               break;
             }
             case 'run-society': {
+              if (!playerId || !room.isHost(playerId)) {
+                send(ws, { type: 'society-error', error: 'Only the room host can run the swarm.' });
+                break;
+              }
               // Demo/dev replay: when SOCIETY_REPLAY points at a recorded run's
               // message schedule, stream those events instead of running live.
               const societyReplay = process.env.SOCIETY_REPLAY;
@@ -194,17 +253,20 @@ export function relayPlugin(): Plugin {
                   console.error('[relay] society replay failed, running live:', e);
                 }
               }
-              // Read key from environment (process.env.DASHSCOPE_API_KEY)
-              const apiKey = process.env.DASHSCOPE_API_KEY;
-              if (!apiKey) {
-                send(ws, { type: 'society-error', error: 'Server DASHSCOPE_API_KEY environment variable is not configured.' });
+              let provider;
+              try {
+                provider = await providerFromClient(msg);
+              } catch (error) {
+                send(ws, { type: 'society-error', error: error instanceof Error ? error.message : String(error) });
                 break;
               }
 
               send(ws, { type: 'society-started', brief: msg.brief, taskCount: 0 });
 
-              const provider = createServerProvider(apiKey);
+              const model = msg.model?.trim();
+              let negotiationRes: any;
               runSociety(msg.brief, provider, {
+                models: model ? { manager: model, worker: model } : undefined,
                 onEvent: (event) => {
                   if (event.type === 'task-start') {
                     send(ws, {
@@ -234,57 +296,46 @@ export function relayPlugin(): Plugin {
                       attempt: event.attempts
                     });
                   }
-                }
-              }).then(async (result) => {
-                let negotiationRes: any = undefined;
-
-                if (result.tasks.length >= 2) {
-                  // Resolve debate on integration between tasks
-                  const debateTopic = `Integrate outputs of "${result.tasks[0].title}" and "${result.tasks[1].title}" into a unified outcome for the brief: "${msg.brief}"`;
-                  const positions = [
-                    { agent: result.tasks[0].title, stance: result.tasks[0].output.slice(0, 500) },
-                    { agent: result.tasks[1].title, stance: result.tasks[1].output.slice(0, 500) }
-                  ];
-
+                },
+                beforeSynthesis: async (tasks) => {
                   try {
-                    const debateResult = await runNegotiation(debateTopic, positions, provider, {
-                      maxRounds: 2,
-                      onEvent: (e) => {
-                        if (e.type === 'negotiation-turn') {
-                          send(ws, {
-                            type: 'society-negotiation',
-                            topic: debateTopic,
-                            round: e.round,
-                            agent: e.agent,
-                            argument: e.argument
-                          });
-                        } else if (e.type === 'negotiation-scores') {
-                          send(ws, {
-                            type: 'society-negotiation',
-                            topic: debateTopic,
-                            round: e.round,
-                            agent: 'Referee',
-                            argument: `Scoring results for Round ${e.round}`,
-                            scores: e.scores
-                          });
-                        }
+                    const prepared = await leadNotesFromConflict(msg.brief, tasks, provider, (event) => {
+                      if (event.type === 'negotiation-turn') {
+                        send(ws, {
+                          type: 'society-negotiation',
+                          topic: event.topic ?? 'Worker outputs',
+                          round: event.round,
+                          agent: event.agent,
+                          argument: event.argument
+                        });
+                      } else if (event.type === 'negotiation-scores') {
+                        send(ws, {
+                          type: 'society-negotiation',
+                          topic: event.topic ?? 'Worker outputs',
+                          round: event.round,
+                          agent: 'Referee',
+                          argument: `Scoring results for Round ${event.round}`,
+                          scores: event.scores
+                        });
                       }
                     });
-
-                    negotiationRes = {
-                      topic: debateTopic,
-                      rounds: debateResult.rounds,
-                      outcome: debateResult.outcome,
-                      winner: debateResult.winner,
-                      synthesis: debateResult.synthesis,
-                      scores: debateResult.scores,
-                      transcript: debateResult.transcript
-                    };
+                    if (prepared.negotiation) {
+                      negotiationRes = {
+                        topic: prepared.negotiation.topic,
+                        rounds: prepared.negotiation.rounds,
+                        outcome: prepared.negotiation.outcome,
+                        winner: prepared.negotiation.winner,
+                        synthesis: prepared.negotiation.synthesis,
+                        scores: prepared.negotiation.scores,
+                        transcript: prepared.negotiation.transcript
+                      };
+                    }
+                    return prepared.notes;
                   } catch (e) {
                     console.error('[Relay] Negotiation failed:', e);
                   }
                 }
-
+              }).then(async (result) => {
                 send(ws, {
                   type: 'society-complete',
                   result: {
@@ -298,6 +349,7 @@ export function relayPlugin(): Plugin {
                       attempts: t.attempts,
                       healed: t.healed
                     })),
+                    synthesis: result.synthesis,
                     negotiation: negotiationRes,
                     metrics: result.metrics
                   }
@@ -311,6 +363,10 @@ export function relayPlugin(): Plugin {
               // Demo/dev replay: when BENCH_REPLAY points at a saved benchmark-result
               // JSON (recorded from a real run), stream it back after a short delay
               // instead of re-running the pipelines. Inactive unless the env var is set.
+              if (!playerId || !room.isHost(playerId)) {
+                send(ws, { type: 'society-error', error: 'Only the room host can run the benchmark.' });
+                break;
+              }
               const replayPath = process.env.BENCH_REPLAY;
               if (replayPath) {
                 try {
@@ -322,14 +378,14 @@ export function relayPlugin(): Plugin {
                   console.error('[relay] benchmark replay failed, running live:', e);
                 }
               }
-              const apiKey = process.env.DASHSCOPE_API_KEY;
-              if (!apiKey) {
-                send(ws, { type: 'society-error', error: 'Server DASHSCOPE_API_KEY environment variable is not configured.' });
+              let provider;
+              try {
+                provider = await providerFromClient(msg);
+              } catch (error) {
+                send(ws, { type: 'society-error', error: error instanceof Error ? error.message : String(error) });
                 break;
               }
-
-              const provider = createServerProvider(apiKey);
-              runBenchmark(msg.brief, provider).then((benchResult) => {
+              runBenchmark(msg.brief, provider, msg.model?.trim()).then((benchResult) => {
                 send(ws, {
                   type: 'benchmark-result',
                   society: {
@@ -343,6 +399,7 @@ export function relayPlugin(): Plugin {
                       attempts: t.attempts,
                       healed: t.healed
                     })),
+                    synthesis: benchResult.society.synthesis,
                     metrics: benchResult.society.metrics
                   },
                   single: benchResult.single,

@@ -37,7 +37,7 @@ export const NegotiationArena: React.FC<{ onClose: () => void }> = ({ onClose })
     if (!hasKey) { setError('Add an API key (BYOK) first.'); return; }
     setRunning(true);
     try {
-      const llm = createProvider(provider, llmConfig.apiKey || '');
+      const llm = createProvider(provider, llmConfig.apiKey || '', llmConfig.baseUrl);
       const tiers = PROVIDERS[provider].tiers;
       const r = await runNegotiation(
         topic.trim(),

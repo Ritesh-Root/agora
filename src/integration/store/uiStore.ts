@@ -43,19 +43,22 @@ export const useUiStore = create<CharacterState>()(
         if (saved) {
           const parsed = JSON.parse(saved);
           const provider: ProviderId = parsed.provider === 'nvidia' ? 'nvidia' : DEFAULT_PROVIDER;
-          const known = PROVIDERS[provider].models;
           return {
             provider,
             apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '',
-            model: typeof parsed.model === 'string' && known.includes(parsed.model)
-              ? parsed.model
-              : PROVIDERS[provider].defaultModel
+            model: typeof parsed.model === 'string' && parsed.model.trim()
+              ? parsed.model.trim()
+              : PROVIDERS[provider].defaultModel,
+            baseUrl: typeof parsed.baseUrl === 'string' && parsed.baseUrl.trim()
+              ? parsed.baseUrl.trim()
+              : PROVIDERS[provider].baseUrl,
           };
         }
       } catch { }
       return {
         provider: DEFAULT_PROVIDER,
         apiKey: '',
+        baseUrl: PROVIDERS[DEFAULT_PROVIDER].baseUrl,
         model: DEFAULT_MODELS.text
       };
     })(),

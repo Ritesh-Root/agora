@@ -7,6 +7,10 @@ import {relayPlugin} from './server/relay';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   process.env.DASHSCOPE_API_KEY = env.DASHSCOPE_API_KEY || process.env.DASHSCOPE_API_KEY;
+  process.env.TYPESAFE_API_KEY = env.TYPESAFE_API_KEY || process.env.TYPESAFE_API_KEY;
+  process.env.JEV_API_KEY = env.JEV_API_KEY || process.env.JEV_API_KEY;
+  process.env.TYPESAFE_BASE_URL = env.TYPESAFE_BASE_URL || process.env.TYPESAFE_BASE_URL;
+  process.env.JEV_MODEL = env.JEV_MODEL || process.env.JEV_MODEL;
   return {
     base: '/',
     plugins: [react(), tailwindcss(), relayPlugin()],

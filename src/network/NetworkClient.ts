@@ -2,6 +2,7 @@ import { ClientMessage, ServerMessage } from '../../shared/protocol';
 import { useRosterStore } from './RosterStore';
 import { useSocietyStore } from '../integration/store/societyStore';
 import { useCoreStore } from '../integration/store/coreStore';
+import { useRoomChatStore } from './roomChatStore';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 3000];
 
@@ -69,6 +70,10 @@ export class NetworkClient {
     this._handleMessage({ type: 'joined', me, roster: [me] });
   }
 
+  public isOpen(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
   public send(msg: ClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
@@ -88,7 +93,6 @@ export class NetworkClient {
     this.ws = ws;
 
     ws.onopen = () => {
-      this.reconnectAttempts = 0;
       this.send({ type: 'join', name: this.name, color: this.color });
     };
 
@@ -125,6 +129,7 @@ export class NetworkClient {
     const roster = useRosterStore.getState();
     switch (msg.type) {
       case 'joined':
+        this.reconnectAttempts = 0;
         roster.setSelf(msg.me);
         roster.setRoster(msg.roster);
         roster.setStatus('connected');
@@ -140,6 +145,12 @@ export class NetworkClient {
         break;
       case 'roster-update':
         roster.setRoster(msg.roster);
+        break;
+      case 'room-chat-history':
+        useRoomChatStore.getState().setHistory(msg.messages);
+        break;
+      case 'room-chat':
+        useRoomChatStore.getState().add(msg.message);
         break;
       case 'society-started':
         useSocietyStore.getState().startSociety(msg.brief);

@@ -188,6 +188,9 @@ export class SceneManager {
 
     this.engine.renderer.setAnimationLoop(this.animate.bind(this));
 
+    const roster = useRosterStore.getState();
+    if (roster.self) this._onJoined(roster.self, roster.roster);
+
     this.unsubs.push(useUiStore.subscribe((s, prev) => {
       if (s.instanceCount !== prev.instanceCount) this.controller?.setInstanceCount(s.instanceCount);
       const team = useTeamStore.getState();
@@ -444,7 +447,7 @@ export class SceneManager {
     this.isHost = me.isHost;
     this._wireDrivers(getActiveAgentSet());
     this._reconcileRoster(roster);
-    if (me.isHost) this._registerCabinsAsHost();
+    this._registerCabinsAsHost();
   }
 
   /** Diffs the incoming roster against knownPlayers — surgical add/update/remove, never a full rebuild. */

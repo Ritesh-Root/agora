@@ -3,22 +3,24 @@ import { PROVIDERS, DEFAULT_PROVIDER } from '../constants';
 import { NvidiaProvider } from './NvidiaProvider';
 import { QwenProvider } from './QwenProvider';
 
-/** Instantiate the LLM provider backing a given config. */
-export function createProvider(provider: ProviderId | undefined, apiKey: string): LLMProvider {
-  switch (provider ?? DEFAULT_PROVIDER) {
-    case 'nvidia':
-      return new NvidiaProvider(apiKey);
-    case 'qwen':
-    default:
-      return new QwenProvider(apiKey);
+/** Instantiate the LLM provider for a base URL. NVIDIA keeps its own request quirks. */
+export function createProvider(
+  provider: ProviderId | undefined,
+  apiKey: string,
+  baseUrl?: string,
+): LLMProvider {
+  const spec = PROVIDERS[provider ?? DEFAULT_PROVIDER];
+  const root = (baseUrl?.trim() || spec.baseUrl).replace(/\/$/, '');
+  const url = root.endsWith('/chat/completions') ? root : `${root}/chat/completions`;
+  if ((provider ?? DEFAULT_PROVIDER) === 'nvidia' || url.includes('api.nvidia.com')) {
+    return new NvidiaProvider(apiKey, url);
   }
+  return new QwenProvider(apiKey, url);
 }
 
-/** Lightweight client-side check that a key looks right for the chosen provider. */
-export function isValidKey(provider: ProviderId | undefined, apiKey: string | undefined): boolean {
-  if (!apiKey) return false;
-  const prefix = PROVIDERS[provider ?? DEFAULT_PROVIDER].keyPrefix.toLowerCase();
-  return apiKey.trim().toLowerCase().startsWith(prefix);
+/** Any non-empty key is accepted. Preset prefixes are not required for a custom endpoint. */
+export function isValidKey(_provider: ProviderId | undefined, apiKey: string | undefined): boolean {
+  return !!apiKey?.trim();
 }
 
 export function modelsForProvider(provider: ProviderId | undefined): string[] {

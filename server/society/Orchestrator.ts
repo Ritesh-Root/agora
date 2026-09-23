@@ -12,6 +12,8 @@
  * so it runs server-side (Alibaba FC/ECS) and under the strict server tsconfig.
  */
 
+import { judgeWorkerOutput } from './decider/gates';
+
 /** Minimal structural type any LLM provider satisfies. */
 export interface LLMLike {
   generateCompletion(
@@ -29,8 +31,9 @@ export interface SocietyTask {
   role: string;
   /** What this worker must produce. */
   prompt: string;
-  /** Task ids this depends on (DAG). Modeled now; flat execution in this cut. */
+  /** Task ids this depends on. Execution waits for those outputs. */
   deps?: string[];
+  acceptanceCriteria?: string[];
 }
 
 export type TaskStatus = 'done' | 'escalated';
@@ -59,6 +62,12 @@ export interface SocietyResult {
     escalated: number;
     healed: number;
     wallMs: number;
+    phases: {
+      managerMs: number;
+      workersMs: number;
+      beforeSynthesisMs: number;
+      leadMs: number;
+    };
   };
 }
 
@@ -66,7 +75,14 @@ export interface OrchestratorOptions {
   models?: { manager?: string; worker?: string };
   /** Returns false to mark a worker output invalid (triggers self-heal). */
   isValidOutput?: (task: SocietyTask, output: string) => boolean;
+  /** Jev path. `legacy` means use isValidOutput. */
+  judgeOutput?: (
+    task: SocietyTask,
+    output: string,
+  ) => Promise<'accept' | 'retry' | 'escalate' | 'legacy'>;
   onEvent?: (event: { type: string; [key: string]: any }) => void;
+  /** Called with worker results before the Lead writes the deliverable. */
+  beforeSynthesis?: (results: TaskResult[]) => Promise<string | void>;
 }
 
 const DEFAULT_MANAGER_MODEL = 'qwen-max';
@@ -101,12 +117,16 @@ function normalizeTask(raw: unknown, index: number): SocietyTask {
   const deps = Array.isArray(obj.deps)
     ? obj.deps.filter((d): d is string => typeof d === 'string')
     : undefined;
+  const acceptanceCriteria = Array.isArray(obj.acceptanceCriteria)
+    ? obj.acceptanceCriteria.filter((c): c is string => typeof c === 'string' && !!c.trim())
+    : undefined;
   return {
     id: str(obj.id, `t${index + 1}`),
     title: str(obj.title, `Task ${index + 1}`),
     role: str(obj.role, 'worker'),
     prompt: str(obj.prompt, str(obj.title, `Task ${index + 1}`)),
     deps,
+    acceptanceCriteria,
   };
 }
 
@@ -138,11 +158,64 @@ export function parsePlan(content: string | null): SocietyTask[] {
   return parsed.map((raw, i) => normalizeTask(raw, i));
 }
 
+function clip(text: string, max = 1500): string {
+  const trimmed = text.trim();
+  return trimmed.length <= max ? trimmed : `${trimmed.slice(0, max)}…`;
+}
+
+/** Group tasks so a task never runs before the tasks it depends on. */
+export function dependencyWaves(tasks: SocietyTask[]): SocietyTask[][] {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const remaining = new Set(tasks.map((task) => task.id));
+  const done = new Set<string>();
+  const waves: SocietyTask[][] = [];
+
+  while (remaining.size > 0) {
+    const ready = [...remaining].filter((id) => {
+      const deps = byId.get(id)?.deps ?? [];
+      return deps.every((dep) => done.has(dep) || !byId.has(dep));
+    });
+    const ids = ready.length > 0 ? ready : [...remaining];
+    waves.push(ids.map((id) => byId.get(id)!));
+    for (const id of ids) {
+      remaining.delete(id);
+      done.add(id);
+    }
+  }
+  return waves;
+}
+
+function workerPrompt(
+  task: SocietyTask,
+  brief: string,
+  siblings: string[],
+  depText: string,
+  attempt: number,
+  lastInvalid: string,
+): string {
+  const parts = [
+    `Brief:\n${brief}`,
+    `Your task (${task.role}): ${task.prompt}`,
+    task.acceptanceCriteria?.length
+      ? `Acceptance criteria:\n- ${task.acceptanceCriteria.join('\n- ')}`
+      : '',
+    siblings.length ? `Other tasks in this wave, do not duplicate them: ${siblings.join('; ')}` : '',
+    depText ? `Outputs you depend on:\n${depText}` : '',
+  ].filter(Boolean);
+  const body = parts.join('\n\n');
+  if (attempt === 1) return body;
+  return `Your previous attempt was rejected as invalid:\n"""${lastInvalid}"""\nDiagnose what went wrong, then produce a corrected deliverable.\n\n${body}`;
+}
+
 async function runWorker(
   task: SocietyTask,
+  brief: string,
+  siblings: string[],
+  depText: string,
   provider: LLMLike,
   model: string,
   isValid: (task: SocietyTask, output: string) => boolean,
+  judgeOutput: OrchestratorOptions['judgeOutput'] | undefined,
   tracker: ReturnType<typeof makeConcurrencyTracker>,
   onEvent?: (event: { type: string; [key: string]: any }) => void,
 ): Promise<TaskResult> {
@@ -159,9 +232,7 @@ async function runWorker(
         onEvent?.({ type: 'task-healing', taskId: task.id, title: task.title, attempt: attempts });
       }
       const system = `You are a ${task.role} worker in an agent society. Complete the task and respond with the deliverable only.`;
-      const userContent = attempts === 1
-        ? task.prompt
-        : `Your previous attempt was rejected as invalid:\n"""${lastInvalid}"""\nDiagnose what went wrong, then produce a corrected deliverable for: ${task.prompt}`;
+      const userContent = workerPrompt(task, brief, siblings, depText, attempts, lastInvalid);
 
       const res = await provider.generateCompletion(
         [{ role: 'user', content: userContent }],
@@ -171,7 +242,14 @@ async function runWorker(
       );
       output = res.content ?? '';
 
-      if (isValid(task, output)) {
+      const judged = judgeOutput
+        ? await judgeOutput(task, output)
+        : await judgeWorkerOutput({ brief, task, output });
+      const verdict = judged === 'legacy'
+        ? (isValid(task, output) ? 'accept' : 'retry')
+        : judged;
+
+      if (verdict === 'accept') {
         onEvent?.({ type: 'task-done', taskId: task.id, title: task.title, status: 'done', output, attempts, healed: attempts > 1 });
         return {
           id: task.id,
@@ -183,6 +261,7 @@ async function runWorker(
           healed: attempts > 1,
         };
       }
+      if (verdict === 'escalate') break;
       lastInvalid = output;
     }
 
@@ -209,6 +288,7 @@ export async function runSociety(
   options: OrchestratorOptions = {},
 ): Promise<SocietyResult> {
   const start = Date.now();
+  const managerStarted = Date.now();
   const managerModel = options.models?.manager ?? DEFAULT_MANAGER_MODEL;
   const workerModel = options.models?.worker ?? DEFAULT_WORKER_MODEL;
   const isValid = options.isValidOutput ?? defaultIsValid;
@@ -216,9 +296,9 @@ export async function runSociety(
 
   // 1. Manager decomposes the brief.
   const managerSystem =
-    'You are the Manager of an agent society. Decompose the user brief into independent, ' +
-    'parallelizable subtasks, each assigned to a specialized worker role. Respond with ONLY a ' +
-    'JSON array: [{"id","title","role","prompt","deps"?}]. Aim for at least 3 tasks.';
+    'You are the Manager of an agent society. Decompose the user brief into subtasks. ' +
+    'Tasks that can run together should have no deps. A task that needs another task\'s output lists that id in deps. ' +
+    'Respond with ONLY a JSON array: [{"id","title","role","prompt","deps"?,"acceptanceCriteria"?}]. Aim for at least 3 tasks.';
   const plan = await provider.generateCompletion(
     [{ role: 'user', content: brief }],
     undefined,
@@ -226,16 +306,36 @@ export async function runSociety(
     managerModel,
   );
   const tasks = parsePlan(plan.content);
+  const managerMs = Date.now() - managerStarted;
 
-  // 2. Workers execute in parallel (each can self-heal once).
   const tracker = makeConcurrencyTracker();
-  const results = await Promise.all(
-    tasks.map((task) => runWorker(task, provider, workerModel, isValid, tracker, onEvent)),
-  );
+  const outputs = new Map<string, string>();
+  const results: TaskResult[] = [];
+  const workersStarted = Date.now();
+  for (const wave of dependencyWaves(tasks)) {
+    const waveResults = await Promise.all(wave.map((task) => {
+      const siblings = wave.filter((other) => other.id !== task.id).map((other) => other.title);
+      const depText = (task.deps ?? [])
+        .map((id) => outputs.get(id))
+        .filter((text): text is string => !!text)
+        .map((text) => clip(text))
+        .join('\n\n');
+      return runWorker(task, brief, siblings, depText, provider, workerModel, isValid, options.judgeOutput, tracker, onEvent);
+    }));
+    for (const result of waveResults) {
+      outputs.set(result.id, result.output);
+      results.push(result);
+    }
+  }
+  const workersMs = Date.now() - workersStarted;
 
-  // 3. Lead merges worker outputs into one coherent deliverable.
+  const beforeStarted = Date.now();
+  const leadNotes = (await options.beforeSynthesis?.(results)) || '';
+  const beforeSynthesisMs = Date.now() - beforeStarted;
+
   let synthesis = '';
   const doneOutputs = results.filter((r) => r.status === 'done' && r.output);
+  const leadStarted = Date.now();
   if (doneOutputs.length > 0) {
     onEvent?.({ type: 'society-synthesizing' });
     try {
@@ -248,7 +348,7 @@ export async function runSociety(
           role: 'user',
           content: `Brief:\n${brief}\n\nWorker outputs:\n${doneOutputs
             .map((r) => `### ${r.title} (${r.role})\n${r.output}`)
-            .join('\n\n')}`,
+            .join('\n\n')}${leadNotes ? `\n\nResolved disagreement:\n${leadNotes}` : ''}`,
         }],
         undefined,
         leadSystem,
@@ -259,6 +359,7 @@ export async function runSociety(
       // synthesis is best-effort; the task outputs still stand on their own
     }
   }
+  const leadMs = Date.now() - leadStarted;
 
   return {
     brief,
@@ -270,6 +371,7 @@ export async function runSociety(
       escalated: results.filter((r) => r.status === 'escalated').length,
       healed: results.filter((r) => r.healed).length,
       wallMs: Date.now() - start,
+      phases: { managerMs, workersMs, beforeSynthesisMs, leadMs },
     },
   };
 }

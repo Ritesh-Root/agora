@@ -11,14 +11,17 @@ export interface LLMLike {
     tools?: unknown[],
     systemInstruction?: string,
     modelName?: string,
-  ): Promise<{ content: string | null }>;
+  ): Promise<{ content: string | null; usage?: { promptTokens: number; completionTokens: number; totalTokens: number } }>;
 }
 
-export function createServerProvider(apiKey: string): LLMLike {
-  const isNvidia = apiKey.trim().startsWith('nvapi-');
-  const baseUrl = isNvidia
-    ? 'https://integrate.api.nvidia.com/v1/chat/completions'
-    : 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
+export function createServerProvider(apiKey: string, options?: { baseUrl?: string }): LLMLike {
+  const requested = options?.baseUrl?.trim();
+  const isNvidia = apiKey.trim().startsWith('nvapi-') || (requested ?? '').includes('api.nvidia.com');
+  const baseUrl = requested
+    ? (requested.endsWith('/chat/completions') ? requested : `${requested.replace(/\/$/, '')}/chat/completions`)
+    : isNvidia
+      ? 'https://integrate.api.nvidia.com/v1/chat/completions'
+      : 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
 
   return {
     async generateCompletion(messages, tools, systemInstruction, modelName) {
@@ -90,7 +93,14 @@ export function createServerProvider(apiKey: string): LLMLike {
             await new Promise((r) => setTimeout(r, attempt * 1500));
             continue;
           }
-          return { content };
+          const usage = data.usage
+            ? {
+                promptTokens: data.usage.prompt_tokens || 0,
+                completionTokens: data.usage.completion_tokens || 0,
+                totalTokens: data.usage.total_tokens || 0,
+              }
+            : undefined;
+          return { content, usage };
         } catch (error) {
           const transient = error instanceof TypeError ||
             (error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError'));

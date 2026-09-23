@@ -90,6 +90,13 @@ export const SocietyPanel: React.FC = () => {
               </div>
             )}
 
+            {result?.synthesis && (
+              <div className="p-4 border border-zinc-200/70 bg-white rounded-2xl shadow-sm">
+                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block">Lead synthesis</span>
+                <p className="text-xs text-zinc-700 whitespace-pre-wrap leading-relaxed mt-2">{result.synthesis}</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {tasks.map((task) => {
                 const isExecuting = task.status === 'running' || task.status === 'healing';

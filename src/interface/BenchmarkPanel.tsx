@@ -89,7 +89,9 @@ export const BenchmarkPanel: React.FC = () => {
                 <div className="space-y-1.5 text-center sm:text-left z-10">
                   <span className="text-[8px] font-black uppercase tracking-widest text-zinc-400">Benchmark Verdict</span>
                   <h3 className="text-xl font-black tracking-tight leading-none mt-1">
-                    {getSpeedup() > 1.0 ? (
+                    {!benchmarkResult.qualityScores ? (
+                      <>Judge did not return scores</>
+                    ) : getSpeedup() > 1.0 ? (
                       <>Swarm completes <span className="text-emerald-400 font-black">{getSpeedup()}x Faster</span></>
                     ) : (
                       <>Society achieves higher synthesis quality</>
@@ -101,11 +103,11 @@ export const BenchmarkPanel: React.FC = () => {
                 <div className="flex gap-4 shrink-0 z-10">
                   <div className="px-4 py-2 bg-white/10 rounded-xl text-center border border-white/5 shadow-inner">
                     <span className="text-[8px] font-black uppercase tracking-widest text-zinc-300 block">Swarm Quality</span>
-                    <span className="text-xl font-black text-emerald-400 block mt-0.5">{benchmarkResult.qualityScores.society}/100</span>
+                    <span className="text-xl font-black text-emerald-400 block mt-0.5">{benchmarkResult.qualityScores ? `${benchmarkResult.qualityScores.society}/100` : '—'}</span>
                   </div>
                   <div className="px-4 py-2 bg-white/10 rounded-xl text-center border border-white/5 shadow-inner">
                     <span className="text-[8px] font-black uppercase tracking-widest text-zinc-300 block">Single Quality</span>
-                    <span className="text-xl font-black text-zinc-300 block mt-0.5">{benchmarkResult.qualityScores.single}/100</span>
+                    <span className="text-xl font-black text-zinc-300 block mt-0.5">{benchmarkResult.qualityScores ? `${benchmarkResult.qualityScores.single}/100` : '—'}</span>
                   </div>
                 </div>
               </div>
@@ -117,20 +119,20 @@ export const BenchmarkPanel: React.FC = () => {
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center text-xs font-bold text-ink">
                       <span className="flex items-center gap-1.5"><Sparkles size={13} className="text-emerald-500" /> Agent Swarm Society</span>
-                      <span>{benchmarkResult.qualityScores.society}</span>
+                      <span>{benchmarkResult.qualityScores ? benchmarkResult.qualityScores.society : '—'}</span>
                     </div>
                     <div className="h-2.5 bg-zinc-200/60 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out" style={{ width: `${benchmarkResult.qualityScores.society}%` }} />
+                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out" style={{ width: `${benchmarkResult.qualityScores?.society ?? 0}%` }} />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center text-xs font-bold text-zinc-500">
                       <span className="flex items-center gap-1.5">Single Monolithic Agent ({benchmarkResult.single.model})</span>
-                      <span>{benchmarkResult.qualityScores.single}</span>
+                      <span>{benchmarkResult.qualityScores ? benchmarkResult.qualityScores.single : '—'}</span>
                     </div>
                     <div className="h-2.5 bg-zinc-200/60 rounded-full overflow-hidden">
-                      <div className="h-full bg-zinc-400 rounded-full transition-all duration-1000 ease-out" style={{ width: `${benchmarkResult.qualityScores.single}%` }} />
+                      <div className="h-full bg-zinc-400 rounded-full transition-all duration-1000 ease-out" style={{ width: `${benchmarkResult.qualityScores?.single ?? 0}%` }} />
                     </div>
                   </div>
                 </div>

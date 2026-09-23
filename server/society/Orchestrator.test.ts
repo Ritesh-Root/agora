@@ -90,3 +90,50 @@ describe('parsePlan', () => {
     expect(() => parsePlan('')).toThrow();
   });
 });
+
+describe('dependency waves', () => {
+  it('gives a later task the output of the task it depends on', async () => {
+    const provider: LLMLike = {
+      async generateCompletion(messages, _tools, systemInstruction) {
+        if (systemInstruction?.includes('Manager')) {
+          return {
+            content: JSON.stringify([
+              { id: 'a', title: 'A', role: 'researcher', prompt: 'FIRST_TASK' },
+              { id: 'b', title: 'B', role: 'writer', prompt: 'SECOND_TASK', deps: ['a'] },
+            ]),
+          };
+        }
+        const user = messages[messages.length - 1]?.content ?? '';
+        if (user.includes('SECOND_TASK')) {
+          return { content: user.includes('output-of-a') ? 'b-done' : 'ERROR: missing dep' };
+        }
+        return { content: 'output-of-a' };
+      },
+    };
+
+    const result = await runSociety('A short brief', provider);
+    expect(result.tasks.find((task) => task.id === 'b')?.status).toBe('done');
+    expect(result.tasks.find((task) => task.id === 'b')?.output).toBe('b-done');
+  });
+});
+
+describe('Jev worker judgment', () => {
+  it('accepts on the first try when the judge accepts an output the legacy check would reject', async () => {
+    const provider = makeMockProvider();
+    const result = await runSociety('Build a landing page', provider, {
+      judgeOutput: async (_task, output) => output.startsWith('ERROR') ? 'accept' : 'accept',
+    });
+    const writeTask = result.tasks.find((task) => task.id === 't3');
+    expect(writeTask?.status).toBe('done');
+    expect(writeTask?.attempts).toBe(1);
+    expect(writeTask?.output.startsWith('ERROR')).toBe(true);
+  });
+
+  it('escalates immediately when the judge asks the boss', async () => {
+    const result = await runSociety('Build a landing page', makeMockProvider(), {
+      judgeOutput: async () => 'escalate',
+    });
+    expect(result.tasks.every((task) => task.status === 'escalated' && task.attempts === 1)).toBe(true);
+    expect(result.metrics.phases.workersMs).toBeGreaterThanOrEqual(0);
+  });
+});
