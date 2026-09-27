@@ -74,7 +74,11 @@ describe('Society Orchestrator', () => {
 
   it('runs the selected team on each agent model', async () => {
     const calls: { model?: string; system?: string }[] = [];
-    const provider: LLMLike = {
+    const noted: { stage: string; agent: string }[] = [];
+    const provider: LLMLike & { prepareRequest: (info: { stage: string; agent: string }) => void } = {
+      prepareRequest(info) {
+        noted.push(info);
+      },
       async generateCompletion(_messages, _tools, systemInstruction, modelName) {
         calls.push({ model: modelName, system: systemInstruction });
         if (systemInstruction?.includes('You lead this team')) {
@@ -101,6 +105,9 @@ describe('Society Orchestrator', () => {
     expect(calls.some((call) => call.system?.includes('You are the Manager'))).toBe(false);
     expect(calls.some((call) => call.system?.includes('You are the Lead'))).toBe(false);
     expect(calls.some((call) => call.model === 'model-camera' && call.system?.includes('Cinematographer'))).toBe(true);
+    expect(noted.some((note) => note.stage === 'planning' && note.agent === 'Film Director')).toBe(true);
+    expect(noted.some((note) => note.stage === 'worker' && note.agent === 'Cinematographer')).toBe(true);
+    expect(noted.some((note) => note.stage === 'assembling' && note.agent === 'Film Director')).toBe(true);
   });
 
 describe('parsePlan', () => {

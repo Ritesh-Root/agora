@@ -212,6 +212,9 @@ export class NetworkClient {
           researching: msg.researching ?? false,
         });
         break;
+      case 'society-stage':
+        useSocietyStore.getState().setStage(msg.stage);
+        break;
       case 'society-negotiation':
         if (msg.scores) {
           useSocietyStore.getState().setNegotiationScores(msg.topic, msg.scores);

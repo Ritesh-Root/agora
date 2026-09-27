@@ -3,9 +3,45 @@ import { createPortal } from 'react-dom';
 import { X, Brain, Shield, AlertTriangle, CheckCircle, Clock, Users, Loader2, Scale } from 'lucide-react';
 import { useSocietyStore } from '../integration/store/societyStore';
 
+function usageText(metrics: {
+  calls?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalCalls?: number;
+  totalPromptTokens?: number;
+  totalCompletionTokens?: number;
+  missingUsage?: number;
+}): string {
+  const planned = metrics.calls ?? 0;
+  const total = metrics.totalCalls ?? planned;
+  const other = Math.max(0, total - planned);
+  const missing = metrics.missingUsage ?? 0;
+  const parts = [
+    `${total} model calls`,
+    `${planned} planning, workers, and merge`,
+  ];
+  if (other > 0) parts.push(`${other} debate and other`);
+  parts.push(`${metrics.totalPromptTokens ?? metrics.promptTokens ?? 0} input tokens`);
+  parts.push(`${metrics.totalCompletionTokens ?? metrics.completionTokens ?? 0} output tokens`);
+  if (missing > 0) parts.push(`${missing} calls had no token count`);
+  parts.push('Cost unavailable');
+  return parts.join(' · ');
+}
+
+function saveDocument(text: string): void {
+  const blob = new Blob([text], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'agora-document.md';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export const SocietyPanel: React.FC = () => {
   const {
     isRunning,
+    stage,
     brief,
     tasks,
     negotiation,
@@ -67,8 +103,8 @@ export const SocietyPanel: React.FC = () => {
             <span className="text-[8px] font-black uppercase tracking-widest text-zinc-400 block">Workspace brief</span>
             <p className="text-xs text-zinc-700 font-semibold leading-relaxed mt-1">{brief}</p>
             {typeof result?.metrics?.calls === 'number' && (
-              <p className="text-[10px] text-zinc-500 mt-2">
-                {result.metrics.calls} model calls · {result.metrics.promptTokens ?? 0} input tokens · {result.metrics.completionTokens ?? 0} output tokens · Cost unavailable
+              <p className="text-[10px] text-zinc-500 mt-2" data-testid="swarm-usage">
+                {usageText(result.metrics)}
               </p>
             )}
           </div>
@@ -99,10 +135,24 @@ export const SocietyPanel: React.FC = () => {
               <p className="text-xs text-zinc-600">No document was produced.</p>
             )}
 
+            {isRunning && (stage === 'debating' || stage === 'assembling') && (
+              <p className="text-xs font-bold text-ink" data-testid="swarm-stage">
+                {stage === 'debating' ? 'Debating.' : 'Assembling document.'} Finished task cards are not the document yet.
+              </p>
+            )}
+
             {result?.synthesis && (
               <div className="p-4 border border-zinc-200/70 bg-white rounded-2xl shadow-sm">
                 <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block">Lead synthesis</span>
                 <p className="text-xs text-zinc-700 whitespace-pre-wrap leading-relaxed mt-2">{result.synthesis}</p>
+                <p className="text-[10px] text-zinc-500 mt-3">This document is only in this tab. A reload clears it.</p>
+                <button
+                  type="button"
+                  onClick={() => saveDocument(result.synthesis)}
+                  className="mt-2 px-3 py-1.5 rounded-lg border border-zinc-200 text-[10px] font-black uppercase tracking-widest text-ink"
+                >
+                  Save a copy
+                </button>
               </div>
             )}
 
@@ -257,7 +307,7 @@ export const SocietyPanel: React.FC = () => {
           {isRunning ? (
             <div className="flex items-center gap-2 text-zinc-400 text-xs font-semibold">
               <Loader2 className="animate-spin text-ink" size={14} />
-              Executing agent society...
+              {stage === 'debating' ? 'Debating' : stage === 'assembling' ? 'Assembling document' : 'Executing agent society...'}
             </div>
           ) : (
             <button onClick={onClose} className="px-5 py-2.5 bg-ink hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-black/10">

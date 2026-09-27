@@ -14,6 +14,7 @@ export async function leadNotesFromConflict(
   tasks: TaskResult[],
   provider: LLMLike,
   onEvent?: (event: { type: string; [key: string]: any }) => void,
+  debateModel?: string,
 ): Promise<LeadNotes> {
   const usable = tasks.filter((task) => task.output.trim());
   if (usable.length < 2) return { conflict: 'none' };
@@ -32,11 +33,14 @@ export async function leadNotesFromConflict(
   }
 
   const debateTopic = `Do these two outputs conflict for the brief: "${brief}"?`;
+  onEvent?.({ type: 'society-debating' });
   const debateResult = await runNegotiation(debateTopic, [
     { agent: pair[0].title, stance: pair[0].output.slice(0, 500) },
     { agent: pair[1].title, stance: pair[1].output.slice(0, 500) },
   ], provider, {
     maxRounds: 2,
+    refereeModel: debateModel,
+    debaterModel: debateModel,
     onEvent: (event) => onEvent?.({ ...event, topic: debateTopic }),
   });
   return {

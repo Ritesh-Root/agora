@@ -15,7 +15,19 @@ export interface LLMLike {
   ): Promise<{ content: string | null; usage?: { promptTokens: number; completionTokens: number; totalTokens: number } }>;
 }
 
-export function createServerProvider(apiKey: string, options?: { baseUrl?: string }): LLMLike {
+export interface RunUsage {
+  calls: number;
+  promptTokens: number;
+  completionTokens: number;
+  missingUsage: number;
+}
+
+export interface ServerProvider extends LLMLike {
+  prepareRequest(info: { runId?: string; stage: string; agent: string; attempt?: number }): void;
+  takeUsage(): RunUsage;
+}
+
+export function createServerProvider(apiKey: string, options?: { baseUrl?: string }): ServerProvider {
   const requested = options?.baseUrl?.trim();
   const isNvidia = apiKey.trim().startsWith('nvapi-') || (requested ?? '').includes('api.nvidia.com');
   const baseUrl = requested
@@ -24,7 +36,19 @@ export function createServerProvider(apiKey: string, options?: { baseUrl?: strin
       ? 'https://integrate.api.nvidia.com/v1/chat/completions'
       : 'https://token-plan.maas.qwencloudapi.com/compatible-mode/v1/chat/completions';
 
+  const usage: RunUsage = { calls: 0, promptTokens: 0, completionTokens: 0, missingUsage: 0 };
+  const request = { runId: '-', stage: 'call', agent: '-', attempt: 1 };
+
   return {
+    prepareRequest(info) {
+      if (info.runId) request.runId = info.runId;
+      request.stage = info.stage;
+      request.agent = info.agent;
+      request.attempt = info.attempt ?? 1;
+    },
+    takeUsage() {
+      return { ...usage };
+    },
     async generateCompletion(messages, tools, systemInstruction, modelName) {
       // If using NVIDIA NIM, map Qwen Cloud model tiers to the hosted qwen3.5 MoE model
       let model = modelName || 'deepseek-v4.1-flash';
@@ -74,9 +98,10 @@ export function createServerProvider(apiKey: string, options?: { baseUrl?: strin
       // NIM's qwen3.5 pool intermittently 500s on identical requests (~1 in 6),
       // so transient 5xx/network failures get retried with backoff.
       const MAX_TRIES = 3;
-      for (let attempt = 1; ; attempt++) {
+      usage.calls += 1;
+      for (let httpTry = 1; ; httpTry++) {
         try {
-          console.info(`[ServerProvider] model=${model}`);
+          console.info(`[ServerProvider] run=${request.runId} stage=${request.stage} agent=${request.agent} model=${model} attempt=${request.attempt} http=${httpTry}`);
           const response = await fetch(baseUrl, {
             method: 'POST',
             headers: {
@@ -89,8 +114,8 @@ export function createServerProvider(apiKey: string, options?: { baseUrl?: strin
 
           if (!response.ok) {
             const text = await response.text();
-            if (response.status >= 500 && attempt < MAX_TRIES) {
-              await new Promise((r) => setTimeout(r, attempt * 1500));
+            if (response.status >= 500 && httpTry < MAX_TRIES) {
+              await new Promise((r) => setTimeout(r, httpTry * 1500));
               continue;
             }
             throw new Error(`Inference API error (${response.status}): ${text}`);
@@ -98,27 +123,34 @@ export function createServerProvider(apiKey: string, options?: { baseUrl?: strin
 
           const data = await response.json() as any;
           const content = data.choices?.[0]?.message?.content ?? null;
-          if ((content === null || !String(content).trim()) && attempt < MAX_TRIES) {
+          if ((content === null || !String(content).trim()) && httpTry < MAX_TRIES) {
             // NIM sometimes returns 200 with empty content — treat as transient
-            await new Promise((r) => setTimeout(r, attempt * 1500));
+            await new Promise((r) => setTimeout(r, httpTry * 1500));
             continue;
           }
-          const usage = data.usage
+          const counted = data.usage
             ? {
                 promptTokens: data.usage.prompt_tokens || 0,
                 completionTokens: data.usage.completion_tokens || 0,
                 totalTokens: data.usage.total_tokens || 0,
               }
             : undefined;
-          return { content, usage };
+          if (counted) {
+            usage.promptTokens += counted.promptTokens;
+            usage.completionTokens += counted.completionTokens;
+          } else {
+            usage.missingUsage += 1;
+          }
+          return { content, usage: counted };
         } catch (error) {
           const transient = error instanceof TypeError ||
             (error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError'));
-          if (attempt < MAX_TRIES && transient) {
+          if (httpTry < MAX_TRIES && transient) {
             // network failure or request timeout — retry
-            await new Promise((r) => setTimeout(r, attempt * 1500));
+            await new Promise((r) => setTimeout(r, httpTry * 1500));
             continue;
           }
+          usage.missingUsage += 1;
           console.error('[ServerProvider] Completion failed:', error);
           throw error;
         }

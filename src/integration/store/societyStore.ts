@@ -49,6 +49,7 @@ export interface BenchmarkResult {
 interface SocietyState {
   // Society run state
   isRunning: boolean;
+  stage: 'planning' | 'working' | 'debating' | 'assembling' | null;
   brief: string;
   tasks: SocietyTask[];
   negotiation: SocietyNegotiation | null;
@@ -61,6 +62,7 @@ interface SocietyState {
   
   // Actions
   startSociety: (brief: string) => void;
+  setStage: (stage: SocietyState['stage']) => void;
   updateTask: (taskId: string, update: Partial<SocietyTask>) => void;
   addNegotiationTurn: (topic: string, turn: NegotiationRound) => void;
   setNegotiationScores: (topic: string, scores: NegotiationScore[]) => void;
@@ -81,6 +83,7 @@ interface SocietyState {
 
 export const useSocietyStore = create<SocietyState>((set) => ({
   isRunning: false,
+  stage: null,
   brief: '',
   tasks: [],
   negotiation: null,
@@ -98,8 +101,11 @@ export const useSocietyStore = create<SocietyState>((set) => ({
     negotiation: null,
     result: null,
     error: null,
+    stage: 'planning',
     isSocietyPanelOpen: true,
   }),
+
+  setStage: (stage) => set({ stage }),
 
   updateTask: (taskId, update) => set((state) => {
     const exists = state.tasks.some((t) => t.id === taskId);
@@ -121,7 +127,8 @@ export const useSocietyStore = create<SocietyState>((set) => ({
       });
     }
 
-    return { tasks: nextTasks };
+    const stage = state.stage === 'debating' || state.stage === 'assembling' ? state.stage : 'working';
+    return { tasks: nextTasks, stage };
   }),
 
   addNegotiationTurn: (topic, turn) => set((state) => {
@@ -177,6 +184,7 @@ export const useSocietyStore = create<SocietyState>((set) => ({
 
     return {
       isRunning: false,
+      stage: null,
       result,
       tasks: nextTasks,
       negotiation: nextNeg,
@@ -186,6 +194,7 @@ export const useSocietyStore = create<SocietyState>((set) => ({
 
   setSocietyError: (error) => set((state) => ({
     isRunning: false,
+    stage: null,
     isBenchmarking: false,
     error,
     isSocietyPanelOpen: !state.isBenchmarking,
@@ -194,6 +203,7 @@ export const useSocietyStore = create<SocietyState>((set) => ({
 
   resetSociety: () => set({
     isRunning: false,
+    stage: null,
     brief: '',
     tasks: [],
     negotiation: null,

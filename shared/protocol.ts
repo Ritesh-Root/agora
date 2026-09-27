@@ -81,6 +81,17 @@ export interface SocietyResultWire {
     escalated: number;
     healed: number;
     wallMs: number;
+    /** Planning, worker, and merge calls, including a worker retry. */
+    calls?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    /** Every model call in the run, including debate. */
+    totalCalls?: number;
+    totalPromptTokens?: number;
+    totalCompletionTokens?: number;
+    /** Calls that returned no token counts, including calls that failed. */
+    missingUsage?: number;
+    phases?: { managerMs: number; workersMs: number; beforeSynthesisMs: number; leadMs: number };
   };
   research?: {
     searches: number;
@@ -111,6 +122,7 @@ export type ServerMessage =
   | { type: 'society-started'; brief: string; taskCount: number }
   | { type: 'society-task-update'; taskId: string; title: string; role: string; status: 'running' | 'done' | 'healing' | 'escalated'; output?: string; attempt?: number; researching?: boolean }
   | { type: 'society-negotiation'; topic: string; round: number; agent: string; argument: string; scores?: Array<{ agent: string; score: number; reason: string }> }
+  | { type: 'society-stage'; stage: 'debating' | 'assembling' }
   | { type: 'society-complete'; result: SocietyResultWire }
   | { type: 'society-error'; error: string }
   | { type: 'room-chat'; message: RoomChatMessage }

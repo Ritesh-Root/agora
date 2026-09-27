@@ -25,6 +25,7 @@ export function formatTokens(num: number): string {
 const ProjectView: React.FC = () => {
   const {
     userBrief,
+    finalOutput,
     referenceImages,
     phase,
     actionLog,
@@ -119,6 +120,26 @@ const ProjectView: React.FC = () => {
           </div>
         ) : (
           <p className="text-xs text-zinc-400 italic">No active brief. Talk to the Lead Agent to define your project.</p>
+        )}
+        {finalOutput && (
+          <div className="mt-4 p-4 rounded-xl border border-zinc-100 bg-white/40">
+            <p className="text-[10px] text-zinc-500">This document is only in this tab. A reload clears it.</p>
+            <button
+              type="button"
+              onClick={() => {
+                const blob = new Blob([finalOutput], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'agora-document.md';
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="mt-2 px-3 py-1.5 rounded-lg border border-zinc-200 text-[10px] font-black uppercase tracking-widest text-ink"
+            >
+              Save a copy
+            </button>
+          </div>
         )}
       </div>
 

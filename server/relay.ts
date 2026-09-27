@@ -77,6 +77,8 @@ function forwardSocietyEvent(ws: WsSocket, event: { type: string; [key: string]:
       output: event.output,
       attempt: event.attempts,
     });
+  } else if (event.type === 'society-synthesizing') {
+    send(ws, { type: 'society-stage', stage: 'assembling' });
   }
 }
 
@@ -399,6 +401,8 @@ export function relayPlugin(): Plugin {
 
               const model = msg.model?.trim();
               const team = sanitizeTeamAgents(msg.agents);
+              const runId = randomUUID();
+              provider.prepareRequest({ runId, stage: 'planning', agent: team[0]?.name ?? 'Manager', attempt: 1 });
               let negotiationRes: any;
               runSociety(msg.brief, provider, {
                 models: model ? { manager: model, worker: model } : undefined,
@@ -407,7 +411,9 @@ export function relayPlugin(): Plugin {
                 beforeSynthesis: async (tasks) => {
                   try {
                     const prepared = await leadNotesFromConflict(msg.brief, tasks, provider, (event) => {
-                      if (event.type === 'negotiation-turn') {
+                      if (event.type === 'society-debating') {
+                        send(ws, { type: 'society-stage', stage: 'debating' });
+                      } else if (event.type === 'negotiation-turn') {
                         send(ws, {
                           type: 'society-negotiation',
                           topic: event.topic ?? 'Worker outputs',
@@ -425,7 +431,7 @@ export function relayPlugin(): Plugin {
                           scores: event.scores
                         });
                       }
-                    });
+                    }, model || 'deepseek-v4.1-flash');
                     if (prepared.negotiation) {
                       negotiationRes = {
                         topic: prepared.negotiation.topic,
@@ -443,6 +449,7 @@ export function relayPlugin(): Plugin {
                   }
                 }
               }).then(async (result) => {
+                const counted = provider.takeUsage();
                 send(ws, {
                   type: 'society-complete',
                   result: {
@@ -458,7 +465,13 @@ export function relayPlugin(): Plugin {
                     })),
                     synthesis: result.synthesis,
                     negotiation: negotiationRes,
-                    metrics: result.metrics,
+                    metrics: {
+                      ...result.metrics,
+                      totalCalls: counted.calls,
+                      totalPromptTokens: counted.promptTokens,
+                      totalCompletionTokens: counted.completionTokens,
+                      missingUsage: counted.missingUsage,
+                    },
                     research: {
                       searches: currentRunStats()?.researchCalls ?? researchSearchCount(),
                       sources: researchSources(),

@@ -92,6 +92,11 @@ export interface OrchestratorOptions {
   team?: { name: string; description: string; model?: string }[];
 }
 
+function prepareRequest(provider: LLMLike, info: { stage: string; agent: string; attempt?: number }): void {
+  const tagged = provider as LLMLike & { prepareRequest?: (info: { stage: string; agent: string; attempt?: number }) => void };
+  tagged.prepareRequest?.(info);
+}
+
 function noteCall(
   tally: { calls: number; promptTokens: number; completionTokens: number },
   res: { usage?: { promptTokens: number; completionTokens: number } },
@@ -266,6 +271,7 @@ async function runWorker(
       });
       const userContent = workerPrompt(task, brief, siblings, depText, attempts, lastInvalid, sources);
 
+      prepareRequest(provider, { stage: 'worker', agent: task.role, attempt: attempts });
       const res = await provider.generateCompletion(
         [{ role: 'user', content: userContent }],
         undefined,
@@ -344,6 +350,7 @@ export async function runSociety(
     : 'You are the Manager of an agent society. Decompose the user brief into subtasks. ' +
       'Tasks that can run together should have no deps. A task that needs another task\'s output lists that id in deps. ' +
       'Respond with ONLY a JSON array: [{"id","title","role","prompt","deps"?,"acceptanceCriteria"?}]. Aim for at least 3 tasks.';
+  prepareRequest(provider, { stage: 'planning', agent: team[0]?.name ?? 'Manager', attempt: 1 });
   const plan = await provider.generateCompletion(
     [{ role: 'user', content: brief }],
     undefined,
@@ -390,6 +397,7 @@ export async function runSociety(
       : 'You are the Lead of an agent society. Merge the worker outputs into ONE coherent, ' +
         'complete, non-redundant deliverable that fully answers the brief. Respond with the ' +
         'final deliverable only.';
+    prepareRequest(provider, { stage: 'assembling', agent: leadName ?? 'Lead', attempt: 1 });
     const leadRes = await provider.generateCompletion(
       [{
         role: 'user',

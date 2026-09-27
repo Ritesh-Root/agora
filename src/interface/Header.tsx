@@ -21,6 +21,14 @@ const Header: React.FC = () => {
   const { setViewMode } = useCoreStore();
   const roster = useRosterStore((s) => s.roster);
   const swarmWorking = useSocietyStore((s) => s.isRunning || s.isBenchmarking);
+  const swarmStage = useSocietyStore((s) => s.stage);
+  const swarmLabel = swarmStage === 'debating'
+    ? 'Debating'
+    : swarmStage === 'assembling'
+      ? 'Assembling document'
+      : swarmStage === 'planning'
+        ? 'Planning'
+        : 'Agents working';
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const hasKey = !!llmConfig.apiKey;
 
@@ -51,11 +59,15 @@ const Header: React.FC = () => {
     }
 
     const config = useUiStore.getState().llmConfig;
-    const agents = getAllAgents(getActiveAgentSet()).map((agent) => ({
-      name: agent.name,
-      description: agent.description,
-      model: agent.model,
-    }));
+    const selectedModel = config.model?.trim();
+    const agents = getAllAgents(getActiveAgentSet()).map((agent) => {
+      const override = agent.model?.trim();
+      return {
+        name: agent.name,
+        description: agent.description,
+        model: override && override !== selectedModel ? override : undefined,
+      };
+    });
 
     if (briefType === 'society') {
       useCoreStore.getState().startProject(brief);
@@ -130,7 +142,7 @@ const Header: React.FC = () => {
             className="hidden sm:inline-flex items-center gap-1.5 px-3 h-9 rounded-full bg-white border border-zinc-200 text-[10px] font-black uppercase tracking-wider text-ink"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-butter animate-pulse" />
-            Agents working
+            {swarmLabel}
           </span>
         )}
 

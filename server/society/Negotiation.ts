@@ -65,6 +65,11 @@ export interface NegotiationOptions {
   onEvent?: (event: { type: string; [key: string]: any }) => void;
 }
 
+function markDebate(provider: NegotiationLLM, agent: string, attempt: number): void {
+  const tagged = provider as NegotiationLLM & { prepareRequest?: (info: { stage: string; agent: string; attempt: number }) => void };
+  tagged.prepareRequest?.({ stage: 'debate', agent, attempt });
+}
+
 const DEFAULT_REFEREE_MODEL = 'qwen3.8-max';
 const DEFAULT_DEBATER_MODEL = 'qwen3.7-plus';
 const RUBRIC = 'relevance to the topic, strength of evidence, feasibility, and clarity';
@@ -125,6 +130,7 @@ async function debaterArgument(
     ? `\nThe Referee's critique of your last argument: ${critique}\nStrengthen your case and address it.`
     : '';
   const user = `Topic: ${topic}\nYour stance: ${pos.stance}${opponentText}${critiqueText}`;
+  markDebate(provider, pos.agent, round);
   const res = await provider.generateCompletion([{ role: 'user', content: user }], undefined, system, model);
   return (res.content ?? '').trim() || `(no argument from ${pos.agent})`;
 }
@@ -138,6 +144,7 @@ async function refereeScore(
   const agents = turns.map((t) => t.agent);
   const system = `You are an impartial Referee. Score each debater 0–100 on this rubric: ${RUBRIC}. Respond with ONLY a JSON array: [{"agent","score","reason"}]. Be discriminating — do not tie.`;
   const user = `Topic: ${topic}\n\nArguments:\n${turns.map((t) => `### ${t.agent}\n${t.argument}`).join('\n\n')}`;
+  markDebate(provider, 'Referee', turns[0]?.round ?? 1);
   const res = await provider.generateCompletion([{ role: 'user', content: user }], undefined, system, model);
   return parseScores(res.content, agents).sort((a, b) => b.score - a.score);
 }
@@ -212,6 +219,7 @@ async function refereeSynthesis(
 ): Promise<string> {
   const system = 'You are the Referee. State the resolution in <=100 words, merging the best supporting points. No preamble.';
   const user = `Topic: ${topic}\nWinning position: ${winner.agent} (${winner.score}/100).\nDebate:\n${transcript.map((t) => `- [r${t.round}] ${t.agent}: ${t.argument}`).join('\n')}`;
+  markDebate(provider, 'Referee', transcript.at(-1)?.round ?? 1);
   const res = await provider.generateCompletion([{ role: 'user', content: user }], undefined, system, model);
   return (res.content ?? '').trim() || `Consensus: adopt ${winner.agent}'s position.`;
 }
@@ -225,6 +233,7 @@ async function refereeEscalation(
 ): Promise<string> {
   const system = 'You are the Referee. No consensus was reached. In <=80 words, summarize the deadlock and the single decision the human must make. No preamble.';
   const user = `Topic: ${topic}\nFinal scores: ${scores.map((s) => `${s.agent} ${s.score}`).join(', ')}\nDebate:\n${transcript.map((t) => `- [r${t.round}] ${t.agent}: ${t.argument}`).join('\n')}`;
+  markDebate(provider, 'Referee', transcript.at(-1)?.round ?? 1);
   const res = await provider.generateCompletion([{ role: 'user', content: user }], undefined, system, model);
   return (res.content ?? '').trim() || 'No consensus — human decision required.';
 }
