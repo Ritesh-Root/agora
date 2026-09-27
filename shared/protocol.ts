@@ -28,6 +28,10 @@ export interface RoomChatMessage {
   name: string;
   text: string;
   timestamp: number;
+  /** Missing means the whole room, including older messages. */
+  audience?: 'room' | 'direct';
+  /** Human who can see a direct thread, along with the agent replies in it. */
+  forPlayerId?: string;
 }
 
 export interface DecisionWire {
@@ -86,18 +90,18 @@ export interface SocietyResultWire {
 }
 
 export type ClientMessage =
-  | { type: 'join'; name: string; color: string }
+  | { type: 'join'; name: string; color: string; resumeId?: string; resumeToken?: string }
   | { type: 'player-state'; pos: [number, number, number]; vel: [number, number]; animState: string; speaking: boolean }
   | { type: 'npc-state'; npcs: RemoteNpcState[] }
   | { type: 'leave' }
   | { type: 'register-cabins'; cabinPoiIds: string[] }
-  | { type: 'run-society'; brief: string; baseUrl?: string; apiKey?: string; model?: string }
+  | { type: 'run-society'; brief: string; baseUrl?: string; apiKey?: string; model?: string; agents?: { name: string; description: string; model?: string }[] }
   | { type: 'run-benchmark'; brief: string; baseUrl?: string; apiKey?: string; model?: string }
-  | { type: 'room-chat'; text: string }
+  | { type: 'room-chat'; text: string; baseUrl?: string; apiKey?: string; model?: string; agents?: { name: string; description: string }[] }
   | { type: 'decision-reply'; id: string; action: 'approve' | 'edit' | 'reject'; text?: string };
 
 export type ServerMessage =
-  | { type: 'joined'; me: PlayerInfo; roster: PlayerInfo[] }
+  | { type: 'joined'; me: PlayerInfo; roster: PlayerInfo[]; hostToken?: string }
   | { type: 'room-full' }
   | { type: 'cabins-not-ready' }
   | { type: 'roster-update'; roster: PlayerInfo[] }

@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+import { canSeeChat } from '../shared/mentions';
 import { MAX_PLAYERS, PlayerInfo, RoomChatMessage } from '../shared/protocol';
 
 const MAX_CHAT = 100;
@@ -23,6 +25,9 @@ export class RoomState {
   private players = new Map<string, PlayerInfo>();
   private cabinPoiIds: string[] | null = null;
   private hostId: string | null = null;
+  /** Survives the host disconnecting so a refresh can reclaim the seat. A display name never matches this. */
+  private hostPlayerId: string | null = null;
+  private hostToken: string | null = null;
   private chat: RoomChatMessage[] = [];
 
   public cabinsReady(): boolean {
@@ -50,16 +55,31 @@ export class RoomState {
     return null;
   }
 
+  /** True when this browser may take the id back. The host id also needs the host token. */
+  public canResume(id: string, token?: string): boolean {
+    if (this.players.has(id)) return false;
+    if (id === this.hostPlayerId) return !!this.hostToken && token === this.hostToken;
+    return true;
+  }
+
   public join(
     id: string,
     name: string,
-    color: string
-  ): { ok: true; info: PlayerInfo } | { ok: false; reason: 'room-full' } {
-    const isHost = this.hostId === null;
+    color: string,
+    token?: string
+  ): { ok: true; info: PlayerInfo; hostToken?: string } | { ok: false; reason: 'room-full' } {
     const slotIndex = this.nextFreeSlot();
     if (slotIndex === null) {
       return { ok: false, reason: 'room-full' };
     }
+
+    const roomEmpty = this.players.size === 0;
+    if (roomEmpty) {
+      this.hostToken = randomUUID();
+      this.hostPlayerId = id;
+      this.hostId = null;
+    }
+    const isHost = roomEmpty || (!!this.hostToken && token === this.hostToken && id === this.hostPlayerId);
 
     const info: PlayerInfo = {
       id,
@@ -71,7 +91,7 @@ export class RoomState {
     };
     this.players.set(id, info);
     if (isHost) this.hostId = id;
-    return { ok: true, info };
+    return { ok: true, info, hostToken: isHost ? this.hostToken ?? undefined : undefined };
   }
 
   /** First loaded office publishes cabins. The host may replace that list later. */
@@ -90,9 +110,16 @@ export class RoomState {
   }
 
   public leave(id: string): void {
+    const wasHost = this.hostId === id;
     this.players.delete(id);
-    if (this.hostId === id) {
+    if (wasHost) {
       this.hostId = null;
+      this.cabinPoiIds = null;
+    }
+    if (this.players.size === 0) {
+      this.hostId = null;
+      this.hostPlayerId = null;
+      this.hostToken = null;
       this.cabinPoiIds = null;
     }
   }
@@ -109,5 +136,9 @@ export class RoomState {
 
   public getChat(): RoomChatMessage[] {
     return this.chat;
+  }
+
+  public chatFor(playerId: string): RoomChatMessage[] {
+    return this.chat.filter((message) => canSeeChat(message, playerId));
   }
 }

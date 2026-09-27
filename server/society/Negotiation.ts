@@ -65,8 +65,8 @@ export interface NegotiationOptions {
   onEvent?: (event: { type: string; [key: string]: any }) => void;
 }
 
-const DEFAULT_REFEREE_MODEL = 'qwen-max';
-const DEFAULT_DEBATER_MODEL = 'qwen-plus';
+const DEFAULT_REFEREE_MODEL = 'qwen3.8-max';
+const DEFAULT_DEBATER_MODEL = 'qwen3.7-plus';
 const RUBRIC = 'relevance to the topic, strength of evidence, feasibility, and clarity';
 
 function clampScore(n: unknown): number {

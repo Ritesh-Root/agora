@@ -55,6 +55,8 @@ export class SceneManager {
   private activeHumanSlots = new Set<number>();
   private lastNetworkSendMs = 0;
   private researchWalked: number | null = null;
+  private deskBound = new Set<number>();
+  private headingHome = new Set<number>();
   private globe: HTMLDivElement;
 
   private unsubs: (() => void)[] = [];
@@ -125,7 +127,12 @@ export class SceneManager {
       })
     );
     this.unsubs.push(useSocietyStore.subscribe((state, prev) => {
-      if (state.tasks !== prev.tasks || state.negotiation !== prev.negotiation) {
+      if (
+        state.tasks !== prev.tasks
+        || state.negotiation !== prev.negotiation
+        || state.isRunning !== prev.isRunning
+        || state.isBenchmarking !== prev.isBenchmarking
+      ) {
         this.syncSocietyMotion();
       }
     }));
@@ -136,7 +143,11 @@ export class SceneManager {
     if (!this.controller) return;
     const agents = getAllAgents(getActiveAgentSet());
     if (agents.length === 0) return;
-    const { tasks, negotiation } = useSocietyStore.getState();
+    const { tasks, negotiation, isRunning, isBenchmarking } = useSocietyStore.getState();
+    const busy = isRunning || isBenchmarking;
+    if (busy && tasks.length === 0) {
+      agents.forEach((agent) => this.setNpcWorking(agent.index, true));
+    }
     tasks.forEach((task, index) => {
       const agentIndex = agents[index % agents.length].index;
       if (task.researching) {
@@ -144,8 +155,11 @@ export class SceneManager {
           this.researchWalked = agentIndex;
           this.moveNpcToResearch(agentIndex);
         }
-      } else if (task.status === 'running' || task.status === 'healing') this.setNpcWorking(agentIndex, true);
-      else if (task.status === 'done' || task.status === 'escalated') this.moveNpcToSpawn(agentIndex);
+      } else if (task.status === 'done' || task.status === 'escalated') {
+        if (!isBenchmarking) this.moveNpcToSpawn(agentIndex);
+      } else if (busy || task.status === 'running' || task.status === 'healing') {
+        this.setNpcWorking(agentIndex, true);
+      }
     });
     if (!tasks.some((task) => task.researching)) this.researchWalked = null;
     const lastTurn = negotiation?.transcript[negotiation.transcript.length - 1];
@@ -344,6 +358,9 @@ export class SceneManager {
     if (!this.controller) return;
     if (working) {
       const renderIndex = toRenderIndex(index);
+      const state = this.controller.getState(renderIndex);
+      if (this.deskBound.has(index) && (state === 'walk' || state === 'sit_work' || state === 'sit_down')) return;
+      this.headingHome.delete(index);
       const id = `sit_work-${index}`;
       let poi = this.poiManager.getPoi(id);
       if (poi && this.poiManager.isReservedByOther(poi.id, renderIndex)) poi = undefined;
@@ -352,7 +369,10 @@ export class SceneManager {
          const desks = this.poiManager.getPoisByPrefix('sit_work').filter(d => !this.poiManager.isReservedByOther(d.id, renderIndex));
          if (desks.length > 0) poi = desks[(index - 1) % desks.length];
       }
-      if (poi) this.controller.walkToPoi(renderIndex, poi.id);
+      if (poi) {
+        this.deskBound.add(index);
+        this.controller.walkToPoi(renderIndex, poi.id);
+      }
     }
   }
 
@@ -391,6 +411,9 @@ export class SceneManager {
 
   public moveNpcToSpawn(index: number, onArrival?: () => void): void {
     if (!this.controller) return;
+    if (!onArrival && this.headingHome.has(index)) return;
+    this.deskBound.delete(index);
+    if (!onArrival) this.headingHome.add(index);
     const poi = this.poiManager.getPoi(`spawn-${index}`);
     if (poi) this.controller.moveTo(toRenderIndex(index), poi.position, 'idle', onArrival, undefined, poi.quaternion);
     else if (onArrival) onArrival();

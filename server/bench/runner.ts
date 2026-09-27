@@ -6,8 +6,13 @@ export interface BenchmarkResult {
   qualityScores: { society: number; single: number } | null;
 }
 
-export async function runBenchmark(brief: string, provider: LLMLike, model = 'qwen-max'): Promise<BenchmarkResult> {
-  const society = await runSociety(brief, provider, { models: { manager: model, worker: model } });
+export async function runBenchmark(
+  brief: string,
+  provider: LLMLike,
+  model = 'deepseek-v4.1-flash',
+  onEvent?: (event: { type: string; [key: string]: any }) => void,
+): Promise<BenchmarkResult> {
+  const society = await runSociety(brief, provider, { models: { manager: model, worker: model }, onEvent });
 
   const singleStart = Date.now();
   const singleRes = await provider.generateCompletion(

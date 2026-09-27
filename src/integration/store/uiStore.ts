@@ -2,8 +2,44 @@ import { create } from 'zustand';
 import { getAllAgents, MAX_PLAYERS } from '../../data/agents';
 import { AgentState, CharacterState } from '../../types';
 import { useTeamStore, getActiveAgentSet } from './teamStore';
-import { DEFAULT_MODELS, DEFAULT_PROVIDER, PROVIDERS } from '../../core/llm/constants';
+import { DEFAULT_MODELS, DEFAULT_PROVIDER, PROVIDERS, shouldMigrateToTokenPlanBaseUrl } from '../../core/llm/constants';
 import { ProviderId } from '../../core/llm/types';
+
+const LEGACY_QWEN_MODELS = new Set(['qwen-max', 'qwen-plus', 'qwen-turbo']);
+/** Previous automatic default. Replaced once, unless the user saved a model on purpose. */
+const PREVIOUS_AUTO_DEFAULT = 'qwen3.8-max';
+
+function migrateLlmConfig(parsed: Record<string, unknown>) {
+  const provider: ProviderId = parsed.provider === 'nvidia' ? 'nvidia' : DEFAULT_PROVIDER;
+  const spec = PROVIDERS[provider];
+  const apiKey = typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '';
+  let baseUrl =
+    typeof parsed.baseUrl === 'string' && parsed.baseUrl.trim()
+      ? parsed.baseUrl.trim()
+      : spec.baseUrl;
+  let model =
+    typeof parsed.model === 'string' && parsed.model.trim()
+      ? parsed.model.trim()
+      : spec.defaultModel;
+
+  // Stale DashScope intl hosts, and pay-as-you-go maas with Token Plan keys, 401.
+  if (provider === 'qwen' && shouldMigrateToTokenPlanBaseUrl(baseUrl, apiKey)) {
+    baseUrl = spec.baseUrl;
+  }
+  if (provider === 'qwen' && LEGACY_QWEN_MODELS.has(model)) {
+    model = spec.defaultModel;
+  }
+  if (provider === 'qwen' && model === PREVIOUS_AUTO_DEFAULT && parsed.modelPinned !== true) {
+    model = spec.defaultModel;
+  }
+
+  return {
+    provider,
+    apiKey,
+    model,
+    baseUrl,
+  };
+}
 
 export const useUiStore = create<CharacterState>()(
   (set) => ({
@@ -42,17 +78,12 @@ export const useUiStore = create<CharacterState>()(
         const saved = localStorage.getItem('byok-config');
         if (saved) {
           const parsed = JSON.parse(saved);
-          const provider: ProviderId = parsed.provider === 'nvidia' ? 'nvidia' : DEFAULT_PROVIDER;
-          return {
-            provider,
-            apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '',
-            model: typeof parsed.model === 'string' && parsed.model.trim()
-              ? parsed.model.trim()
-              : PROVIDERS[provider].defaultModel,
-            baseUrl: typeof parsed.baseUrl === 'string' && parsed.baseUrl.trim()
-              ? parsed.baseUrl.trim()
-              : PROVIDERS[provider].baseUrl,
-          };
+          const migrated = migrateLlmConfig(parsed);
+          // Persist migration so the next load and swarm runs stay on Qwen Cloud Token Plan.
+          try {
+            localStorage.setItem('byok-config', JSON.stringify(migrated));
+          } catch { /* ignore quota */ }
+          return migrated;
         }
       } catch { }
       return {

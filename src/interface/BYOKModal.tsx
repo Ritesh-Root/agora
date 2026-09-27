@@ -2,7 +2,7 @@ import { Eye, EyeOff, Trash2, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUiStore } from '../integration/store/uiStore';
-import { PROVIDERS, DEFAULT_PROVIDER } from '../core/llm/constants';
+import { PROVIDERS, DEFAULT_PROVIDER, clearedLlmConfig } from '../core/llm/constants';
 import { ProviderId } from '../core/llm/types';
 
 interface BYOKModalProps {
@@ -32,7 +32,7 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
     };
     setLlmConfig(config);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...config, modelPinned: true }));
     } catch (e) {
       console.error('Failed to save BYOK config', e);
     }
@@ -40,12 +40,10 @@ const BYOKModal: React.FC<BYOKModalProps> = ({ onClose }) => {
   };
 
   const handleClear = () => {
-    const emptyConfig = {
-      provider,
-      apiKey: '',
-      model: spec.defaultModel,
-    };
-    setApiKey('');
+    const emptyConfig = clearedLlmConfig(provider);
+    setApiKey(emptyConfig.apiKey);
+    setBaseUrl(emptyConfig.baseUrl);
+    setModel(emptyConfig.model);
     setLlmConfig(emptyConfig);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(emptyConfig));

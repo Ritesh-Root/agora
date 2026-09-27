@@ -2,8 +2,8 @@
  * Society Orchestrator — the core of AGORA's "agent society".
  *
  * Lifecycle (Track 3 mechanics):
- *   1. Manager (qwen-max) decomposes a brief into parallelizable subtasks + roles.
- *   2. Workers (qwen-plus) execute concurrently (Promise.all).
+ *   1. Manager (qwen3.8-max) decomposes a brief into parallelizable subtasks + roles.
+ *   2. Workers (qwen3.7-plus) execute concurrently (Promise.all).
  *   3. Worker self-heal: an invalid output is diagnosed and retried ONCE before
  *      escalating to a human-in-the-loop.
  *
@@ -64,6 +64,9 @@ export interface SocietyResult {
     escalated: number;
     healed: number;
     wallMs: number;
+    calls: number;
+    promptTokens: number;
+    completionTokens: number;
     phases: {
       managerMs: number;
       workersMs: number;
@@ -85,10 +88,27 @@ export interface OrchestratorOptions {
   onEvent?: (event: { type: string; [key: string]: any }) => void;
   /** Called with worker results before the Lead writes the deliverable. */
   beforeSynthesis?: (results: TaskResult[]) => Promise<string | void>;
+  /** Selected team. When present, the run uses these names and models instead of Manager/Worker/Lead. */
+  team?: { name: string; description: string; model?: string }[];
 }
 
-const DEFAULT_MANAGER_MODEL = 'qwen-max';
-const DEFAULT_WORKER_MODEL = 'qwen-plus';
+function noteCall(
+  tally: { calls: number; promptTokens: number; completionTokens: number },
+  res: { usage?: { promptTokens: number; completionTokens: number } },
+): void {
+  tally.calls += 1;
+  tally.promptTokens += res.usage?.promptTokens || 0;
+  tally.completionTokens += res.usage?.completionTokens || 0;
+}
+
+function modelFor(team: OrchestratorOptions['team'], role: string, fallback: string): string {
+  const hit = team?.find((agent) => agent.name.toLowerCase() === role.toLowerCase());
+  const model = hit?.model?.trim();
+  return model || fallback;
+}
+
+const DEFAULT_MANAGER_MODEL = 'deepseek-v4.1-flash';
+const DEFAULT_WORKER_MODEL = 'qwen3.7-plus';
 const MAX_ATTEMPTS = 2; // first attempt + one self-heal retry
 
 function defaultIsValid(_task: SocietyTask, output: string): boolean {
@@ -222,6 +242,8 @@ async function runWorker(
   judgeOutput: OrchestratorOptions['judgeOutput'] | undefined,
   tracker: ReturnType<typeof makeConcurrencyTracker>,
   onEvent?: (event: { type: string; [key: string]: any }) => void,
+  team?: OrchestratorOptions['team'],
+  usage?: { calls: number; promptTokens: number; completionTokens: number },
 ): Promise<TaskResult> {
   tracker.enter();
   onEvent?.({ type: 'task-start', taskId: task.id, title: task.title, role: task.role });
@@ -235,7 +257,10 @@ async function runWorker(
       if (attempts > 1) {
         onEvent?.({ type: 'task-healing', taskId: task.id, title: task.title, attempt: attempts });
       }
-      const system = `You are a ${task.role} worker in an agent society. Complete the task and respond with the deliverable only.`;
+      const member = team?.find((agent) => agent.name.toLowerCase() === task.role.toLowerCase());
+      const system = member
+        ? `You are ${member.name}. ${member.description} Complete the task and respond with the deliverable only.`
+        : `You are a ${task.role} worker in an agent society. Complete the task and respond with the deliverable only.`;
       const sources = await researchForTask(task, brief, {
         onStart: () => onEvent?.({ type: 'task-research', taskId: task.id, title: task.title, role: task.role }),
       });
@@ -248,6 +273,7 @@ async function runWorker(
         model,
       );
       output = res.content ?? '';
+      if (usage) noteCall(usage, res);
 
       const judged = judgeOutput
         ? await judgeOutput(task, output)
@@ -300,21 +326,31 @@ export async function runSociety(
   const managerStarted = Date.now();
   const managerModel = options.models?.manager ?? DEFAULT_MANAGER_MODEL;
   const workerModel = options.models?.worker ?? DEFAULT_WORKER_MODEL;
+  const team = (options.team ?? []).filter((agent) => agent.name.trim()).slice(0, 8);
+  const usage = { calls: 0, promptTokens: 0, completionTokens: 0 };
   const isValid = options.isValidOutput ?? defaultIsValid;
   const onEvent = options.onEvent;
   beginResearch();
 
-  // 1. Manager decomposes the brief.
-  const managerSystem =
-    'You are the Manager of an agent society. Decompose the user brief into subtasks. ' +
-    'Tasks that can run together should have no deps. A task that needs another task\'s output lists that id in deps. ' +
-    'Respond with ONLY a JSON array: [{"id","title","role","prompt","deps"?,"acceptanceCriteria"?}]. Aim for at least 3 tasks.';
+  // 1. The selected team lead, or the Manager when no team was sent, decomposes the brief.
+  const managerSystem = team.length
+    ? [
+        'You lead this team:',
+        team.map((agent) => `${agent.name}: ${agent.description}`).join('\n'),
+        `Decompose the user brief into subtasks. Use only these role names: ${team.map((agent) => agent.name).join(', ')}.`,
+        'Tasks that can run together should have no deps. A task that needs another task\'s output lists that id in deps.',
+        'Respond with ONLY a JSON array: [{"id","title","role","prompt","deps"?,"acceptanceCriteria"?}].',
+      ].join('\n')
+    : 'You are the Manager of an agent society. Decompose the user brief into subtasks. ' +
+      'Tasks that can run together should have no deps. A task that needs another task\'s output lists that id in deps. ' +
+      'Respond with ONLY a JSON array: [{"id","title","role","prompt","deps"?,"acceptanceCriteria"?}]. Aim for at least 3 tasks.';
   const plan = await provider.generateCompletion(
     [{ role: 'user', content: brief }],
     undefined,
     managerSystem,
-    managerModel,
+    modelFor(team, team[0]?.name ?? '', managerModel),
   );
+  noteCall(usage, plan);
   const tasks = parsePlan(plan.content);
   const managerMs = Date.now() - managerStarted;
 
@@ -330,7 +366,7 @@ export async function runSociety(
         .filter((text): text is string => !!text)
         .map((text) => clip(text))
         .join('\n\n');
-      return runWorker(task, brief, siblings, depText, provider, workerModel, isValid, options.judgeOutput, tracker, onEvent);
+      return runWorker(task, brief, siblings, depText, provider, modelFor(team, task.role, workerModel), isValid, options.judgeOutput, tracker, onEvent, team, usage);
     }));
     for (const result of waveResults) {
       outputs.set(result.id, result.output);
@@ -348,29 +384,29 @@ export async function runSociety(
   const leadStarted = Date.now();
   if (doneOutputs.length > 0) {
     onEvent?.({ type: 'society-synthesizing' });
-    try {
-      const leadSystem =
-        'You are the Lead of an agent society. Merge the worker outputs into ONE coherent, ' +
+    const leadName = team[0]?.name;
+    const leadSystem = leadName
+      ? `You are ${leadName}. Merge the teammate outputs into ONE coherent, complete, non-redundant deliverable that fully answers the brief. Respond with the final deliverable only.`
+      : 'You are the Lead of an agent society. Merge the worker outputs into ONE coherent, ' +
         'complete, non-redundant deliverable that fully answers the brief. Respond with the ' +
         'final deliverable only.';
-      const leadRes = await provider.generateCompletion(
-        [{
-          role: 'user',
-          content: `Brief:\n${brief}\n\nWorker outputs:\n${doneOutputs
-            .map((r) => `### ${r.title} (${r.role})\n${r.output}`)
-            .join('\n\n')}${leadNotes ? `\n\nResolved disagreement:\n${leadNotes}` : ''}`,
-        }],
-        undefined,
-        leadSystem,
-        managerModel,
-      );
-      synthesis = leadRes.content ?? '';
-      const cited = sourcesMarkdown();
-      if (cited && !synthesis.includes('## Sources')) synthesis += cited;
-    } catch {
-      // synthesis is best-effort; the task outputs still stand on their own
-    }
+    const leadRes = await provider.generateCompletion(
+      [{
+        role: 'user',
+        content: `Brief:\n${brief}\n\nWorker outputs:\n${doneOutputs
+          .map((r) => `### ${r.title} (${r.role})\n${r.output}`)
+          .join('\n\n')}${leadNotes ? `\n\nResolved disagreement:\n${leadNotes}` : ''}`,
+      }],
+      undefined,
+      leadSystem,
+      modelFor(team, leadName ?? '', managerModel),
+    );
+    synthesis = (leadRes.content ?? '').trim();
+    noteCall(usage, leadRes);
+    const cited = sourcesMarkdown();
+    if (cited && synthesis && !synthesis.includes('## Sources')) synthesis += cited;
   }
+  if (doneOutputs.length > 0 && !synthesis.trim()) throw new Error('The run finished without a document.');
   const leadMs = Date.now() - leadStarted;
 
   return {
@@ -383,6 +419,9 @@ export async function runSociety(
       escalated: results.filter((r) => r.status === 'escalated').length,
       healed: results.filter((r) => r.healed).length,
       wallMs: Date.now() - start,
+      calls: usage.calls,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
       phases: { managerMs, workersMs, beforeSynthesisMs, leadMs },
     },
   };

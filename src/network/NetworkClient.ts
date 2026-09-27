@@ -6,6 +6,29 @@ import { useRoomChatStore } from './roomChatStore';
 import { useDecisionStore } from '../interface/decisionStore';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 3000];
+const SEAT_KEY = 'agora-room-seat';
+
+function readSeat(): { playerId?: string; hostToken?: string } | null {
+  try {
+    const raw = sessionStorage.getItem(SEAT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { playerId?: unknown; hostToken?: unknown };
+    return {
+      playerId: typeof parsed.playerId === 'string' ? parsed.playerId : undefined,
+      hostToken: typeof parsed.hostToken === 'string' ? parsed.hostToken : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function rememberSeat(playerId: string, hostToken?: string): void {
+  try {
+    sessionStorage.setItem(SEAT_KEY, JSON.stringify(hostToken ? { playerId, hostToken } : { playerId }));
+  } catch {
+    // Private mode can reject storage. The room still works for this page load.
+  }
+}
 
 type MessageHandler = (msg: ServerMessage) => void;
 
@@ -80,10 +103,12 @@ export class NetworkClient {
     this._handleMessage(msg);
   }
 
-  public send(msg: ClientMessage): void {
+  public send(msg: ClientMessage): boolean {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
+      return true;
     }
+    return false;
   }
 
   /** Subscribe to every inbound server message. Returns an unsubscribe function. */
@@ -99,7 +124,14 @@ export class NetworkClient {
     this.ws = ws;
 
     ws.onopen = () => {
-      this.send({ type: 'join', name: this.name, color: this.color });
+      const seat = readSeat();
+      this.send({
+        type: 'join',
+        name: this.name,
+        color: this.color,
+        resumeId: seat?.playerId,
+        resumeToken: seat?.hostToken,
+      });
     };
 
     ws.onmessage = (event) => {
@@ -136,6 +168,7 @@ export class NetworkClient {
     switch (msg.type) {
       case 'joined':
         this.reconnectAttempts = 0;
+        rememberSeat(msg.me.id, msg.hostToken);
         roster.setSelf(msg.me);
         roster.setRoster(msg.roster);
         roster.setStatus('connected');
@@ -160,6 +193,7 @@ export class NetworkClient {
         break;
       case 'society-started':
         useDecisionStore.getState().reset();
+        useCoreStore.getState().startProject(msg.brief);
         useSocietyStore.getState().startSociety(msg.brief);
         break;
       case 'society-decision':
@@ -190,7 +224,11 @@ export class NetworkClient {
         break;
       case 'society-complete':
         useSocietyStore.getState().setSocietyComplete(msg.result);
-        
+        if (msg.result.synthesis?.trim()) {
+          useCoreStore.getState().setFinalOutput(msg.result.synthesis);
+          useCoreStore.getState().setPhase('done');
+        }
+
         // Populate core store tasks to feed into 3D agent simulation
         for (const t of msg.result.tasks) {
           useCoreStore.getState().addTask({

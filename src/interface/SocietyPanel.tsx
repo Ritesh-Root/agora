@@ -66,6 +66,11 @@ export const SocietyPanel: React.FC = () => {
           <div className="p-4 bg-white/40 border border-zinc-200/50 rounded-2xl shadow-sm">
             <span className="text-[8px] font-black uppercase tracking-widest text-zinc-400 block">Workspace brief</span>
             <p className="text-xs text-zinc-700 font-semibold leading-relaxed mt-1">{brief}</p>
+            {typeof result?.metrics?.calls === 'number' && (
+              <p className="text-[10px] text-zinc-500 mt-2">
+                {result.metrics.calls} model calls · {result.metrics.promptTokens ?? 0} input tokens · {result.metrics.completionTokens ?? 0} output tokens · Cost unavailable
+              </p>
+            )}
           </div>
 
           {/* Error Banner */}
@@ -88,6 +93,10 @@ export const SocietyPanel: React.FC = () => {
                 <Loader2 className="animate-spin text-ink" size={24} />
                 <span className="text-xs font-bold uppercase tracking-wider text-ink/80 animate-pulse">Manager decomposing brief into DAG...</span>
               </div>
+            )}
+
+            {result && !result.synthesis?.trim() && (
+              <p className="text-xs text-zinc-600">No document was produced.</p>
             )}
 
             {result?.synthesis && (
@@ -207,7 +216,7 @@ export const SocietyPanel: React.FC = () => {
             <div data-testid="run-summary" className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-2">
               <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block">Run summary</span>
               <p className="text-xs font-medium text-zinc-700">
-                {result.summary.decisions} Jev decisions · {result.summary.jevCostUsd.toFixed(6)} dollars · {result.summary.searches} web searches
+                {result.summary.decisions} Jev decisions · {result.summary.comparisonMeasured ? `${result.summary.jevCostUsd.toFixed(6)} dollars` : 'Jev cost unavailable'} · {result.summary.searches} web searches
               </p>
               <p className="text-[11px] text-zinc-500 leading-relaxed">{result.summary.comparisonNote}</p>
               {result.summary.sources.length > 0 && (

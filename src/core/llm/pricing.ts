@@ -8,9 +8,14 @@ export interface ModelPricing {
   perSecond?: number;
 }
 
-// USD per 1M tokens. Approximate DashScope (Qwen) international list prices,
+// USD per 1M tokens. Approximate Qwen Cloud list prices,
 // used only for the in-app cost/token estimate — not billing-accurate.
 export const MODEL_PRICING: Record<string, ModelPricing> = {
+  'qwen3.8-max': { inputPer1M: 1.6, outputPer1M: 6.4 },
+  'qwen3.7-plus': { inputPer1M: 0.4, outputPer1M: 1.2 },
+  'qwen3.8-flash': { inputPer1M: 0.05, outputPer1M: 0.2 },
+  'glm-5.3': { inputPer1M: 0.4, outputPer1M: 1.2 },
+  // Legacy DashScope ids (kept for old agent configs / estimates)
   'qwen-max': { inputPer1M: 1.6, outputPer1M: 6.4 },
   'qwen-plus': { inputPer1M: 0.4, outputPer1M: 1.2 },
   'qwen-turbo': { inputPer1M: 0.05, outputPer1M: 0.2 },
@@ -18,6 +23,13 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
 
 export const DEFAULT_PRICING: ModelPricing =
   MODEL_PRICING[DEFAULT_MODELS.text] || { inputPer1M: 0, outputPer1M: 0 };
+
+/** True when this app has a price for the model. An unpriced model must not be shown as $0. */
+export function modelPriceKnown(modelName: string): boolean {
+  const lowerName = modelName.toLowerCase();
+  if (lowerName.includes('minimaxai/')) return true;
+  return Object.keys(MODEL_PRICING).some((key) => lowerName.includes(key.toLowerCase()));
+}
 
 export function calculateCost(promptTokens: number, completionTokens: number, modelName: string, durationOrCount?: number): number {
   const lowerName = modelName.toLowerCase();

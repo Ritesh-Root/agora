@@ -221,7 +221,7 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({
                 >
                   {availableModels.map(m => <option key={m} value={m} className="lowercase">{m}</option>)}
                 </select>
-              ), 'The LLM this agent uses (per-agent model tiering — e.g. qwen-max for planners, qwen-turbo for cheap subtasks).')}
+              ), 'The LLM this agent uses (per-agent model tiering — e.g. qwen3.8-max for planners, qwen3.8-flash for cheap subtasks).')}
             </div>
 
             {/* Content Group */}

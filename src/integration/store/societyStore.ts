@@ -180,14 +180,17 @@ export const useSocietyStore = create<SocietyState>((set) => ({
       result,
       tasks: nextTasks,
       negotiation: nextNeg,
+      isSocietyPanelOpen: true,
     };
   }),
 
-  setSocietyError: (error) => set({
+  setSocietyError: (error) => set((state) => ({
     isRunning: false,
     isBenchmarking: false,
     error,
-  }),
+    isSocietyPanelOpen: !state.isBenchmarking,
+    isBenchmarkPanelOpen: state.isBenchmarking,
+  })),
 
   resetSociety: () => set({
     isRunning: false,
@@ -204,12 +207,13 @@ export const useSocietyStore = create<SocietyState>((set) => ({
     brief,
     benchmarkResult: null,
     error: null,
-    isBenchmarkPanelOpen: true,
+    isBenchmarkPanelOpen: false,
   }),
 
   setBenchmarkResult: (benchmarkResult) => set({
     isBenchmarking: false,
     benchmarkResult,
+    isBenchmarkPanelOpen: true,
   }),
 
   resetBenchmark: () => set({

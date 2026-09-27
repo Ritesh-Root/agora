@@ -4,7 +4,10 @@ import type { WebSocket as WsSocket } from 'ws';
 import type { Plugin, ViteDevServer } from 'vite';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { ClientMessage, ServerMessage } from '../shared/protocol';
+import { parseRoomMentions, sanitizeChatAgents, sanitizeTeamAgents } from '../shared/mentions';
+import { publicModelError } from './modelError';
 import { normalizeChatText, RoomState } from './roomState';
+import { runRoomDiscussion } from './roomReply';
 import { runSociety } from './society/Orchestrator';
 import { leadNotesFromConflict } from './society/leadNotes';
 import { runBenchmark } from './bench/runner';
@@ -34,6 +37,46 @@ const RELAY_PATH = '/__relay';
 function send(ws: WsSocket, msg: ServerMessage): void {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(msg));
+  }
+}
+
+function forwardSocietyEvent(ws: WsSocket, event: { type: string; [key: string]: any }): void {
+  if (event.type === 'task-research') {
+    send(ws, {
+      type: 'society-task-update',
+      taskId: event.taskId,
+      title: event.title,
+      role: event.role,
+      status: 'running',
+      researching: true,
+    });
+  } else if (event.type === 'task-start') {
+    send(ws, {
+      type: 'society-task-update',
+      taskId: event.taskId,
+      title: event.title,
+      role: event.role,
+      status: 'running',
+    });
+  } else if (event.type === 'task-healing') {
+    send(ws, {
+      type: 'society-task-update',
+      taskId: event.taskId,
+      title: event.title,
+      role: event.role,
+      status: 'healing',
+      attempt: event.attempt,
+    });
+  } else if (event.type === 'task-done') {
+    send(ws, {
+      type: 'society-task-update',
+      taskId: event.taskId,
+      title: event.title,
+      role: event.role,
+      status: event.status === 'done' ? 'done' : 'escalated',
+      output: event.output,
+      attempt: event.attempts,
+    });
   }
 }
 
@@ -139,6 +182,7 @@ export function relayPlugin(): Plugin {
 
       const room = new RoomState();
       const sockets = new Map<string, WsSocket>();
+      let replyChain = Promise.resolve();
 
       const broadcastAll = (msg: ServerMessage): void => {
         for (const ws of sockets.values()) send(ws, msg);
@@ -192,8 +236,11 @@ export function relayPlugin(): Plugin {
             }
             case 'join': {
               if (playerId) return;
-              const id = randomUUID();
-              const result = room.join(id, msg.name, msg.color);
+              const requested = typeof msg.resumeId === 'string' ? msg.resumeId.trim() : '';
+              const resumeId = /^[0-9a-f-]{36}$/i.test(requested) ? requested : '';
+              const resumeToken = typeof msg.resumeToken === 'string' ? msg.resumeToken : undefined;
+              const id = resumeId && room.canResume(resumeId, resumeToken) ? resumeId : randomUUID();
+              const result = room.join(id, msg.name, msg.color, resumeToken);
               if (!result.ok) {
                 const { reason } = result as { ok: false; reason: 'room-full' };
                 send(ws, { type: reason });
@@ -202,8 +249,13 @@ export function relayPlugin(): Plugin {
               }
               playerId = id;
               sockets.set(id, ws);
-              send(ws, { type: 'joined', me: result.info, roster: room.getRoster() });
-              send(ws, { type: 'room-chat-history', messages: room.getChat() });
+              send(ws, {
+                type: 'joined',
+                me: result.info,
+                roster: room.getRoster(),
+                ...(result.hostToken ? { hostToken: result.hostToken } : {}),
+              });
+              send(ws, { type: 'room-chat-history', messages: room.chatFor(id) });
               broadcastExcept(id, { type: 'roster-update', roster: room.getRoster() });
               break;
             }
@@ -212,15 +264,64 @@ export function relayPlugin(): Plugin {
               const text = normalizeChatText(msg.text);
               const player = room.getRoster().find((p) => p.id === playerId);
               if (!text || !player) return;
+              const agents = sanitizeChatAgents(msg.agents);
+              const mentions = parseRoomMentions(text, agents);
+              const direct = !mentions.all && mentions.names.length > 0;
               const message = {
                 id: randomUUID(),
                 playerId,
                 name: player.name,
                 text,
                 timestamp: Date.now(),
+                audience: direct ? 'direct' as const : 'room' as const,
+                forPlayerId: direct ? playerId : undefined,
               };
               room.addChat(message);
-              broadcastAll({ type: 'room-chat', message });
+              if (direct) send(ws, { type: 'room-chat', message });
+              else broadcastAll({ type: 'room-chat', message });
+
+              const speakers = mentions.all
+                ? agents
+                : agents.filter((agent) => mentions.names.includes(agent.name));
+              if (speakers.length === 0) break;
+
+              const senderId = playerId;
+              const model = msg.model?.trim();
+              replyChain = replyChain.then(async () => {
+                const post = (name: string, replyText: string) => {
+                  const reply = {
+                    id: randomUUID(),
+                    playerId: `agent:${name}`,
+                    name,
+                    text: replyText,
+                    timestamp: Date.now(),
+                    audience: message.audience,
+                    forPlayerId: message.forPlayerId,
+                  };
+                  room.addChat(reply);
+                  if (reply.audience === 'direct') {
+                    const socket = sockets.get(senderId);
+                    if (socket) send(socket, { type: 'room-chat', message: reply });
+                  } else {
+                    broadcastAll({ type: 'room-chat', message: reply });
+                  }
+                };
+                try {
+                  const provider = await providerFromClient(msg);
+                  await runRoomDiscussion({
+                    speakers,
+                    teammates: agents,
+                    provider,
+                    model,
+                    transcript: () => room.chatFor(senderId).map((entry) => `${entry.name}: ${entry.text}`).join('\n'),
+                    post,
+                  });
+                } catch (error) {
+                  post(speakers[0].name, publicModelError(error));
+                }
+              }).catch((error) => {
+                console.error('[relay] room reply failed:', error instanceof Error ? error.message : error);
+              });
               break;
             }
             case 'register-cabins': {
@@ -274,7 +375,7 @@ export function relayPlugin(): Plugin {
               try {
                 provider = await providerFromClient(msg);
               } catch (error) {
-                send(ws, { type: 'society-error', error: error instanceof Error ? error.message : String(error) });
+                send(ws, { type: 'society-error', error: publicModelError(error) });
                 break;
               }
 
@@ -297,48 +398,12 @@ export function relayPlugin(): Plugin {
               }));
 
               const model = msg.model?.trim();
+              const team = sanitizeTeamAgents(msg.agents);
               let negotiationRes: any;
               runSociety(msg.brief, provider, {
                 models: model ? { manager: model, worker: model } : undefined,
-                onEvent: (event) => {
-                  if (event.type === 'task-research') {
-                    send(ws, {
-                      type: 'society-task-update',
-                      taskId: event.taskId,
-                      title: event.title,
-                      role: event.role,
-                      status: 'running',
-                      researching: true,
-                    });
-                  } else if (event.type === 'task-start') {
-                    send(ws, {
-                      type: 'society-task-update',
-                      taskId: event.taskId,
-                      title: event.title,
-                      role: event.role,
-                      status: 'running'
-                    });
-                  } else if (event.type === 'task-healing') {
-                    send(ws, {
-                      type: 'society-task-update',
-                      taskId: event.taskId,
-                      title: event.title,
-                      role: event.role,
-                      status: 'healing',
-                      attempt: event.attempt
-                    });
-                  } else if (event.type === 'task-done') {
-                    send(ws, {
-                      type: 'society-task-update',
-                      taskId: event.taskId,
-                      title: event.title,
-                      role: event.role,
-                      status: event.status === 'done' ? 'done' : 'escalated',
-                      output: event.output,
-                      attempt: event.attempts
-                    });
-                  }
-                },
+                team,
+                onEvent: (event) => forwardSocietyEvent(ws, event),
                 beforeSynthesis: async (tasks) => {
                   try {
                     const prepared = await leadNotesFromConflict(msg.brief, tasks, provider, (event) => {
@@ -414,7 +479,7 @@ export function relayPlugin(): Plugin {
               }).catch((err) => {
                 endRunStats();
                 clearBoss();
-                send(ws, { type: 'society-error', error: err.message || String(err) });
+                send(ws, { type: 'society-error', error: publicModelError(err) });
               });
               break;
             }
@@ -441,10 +506,10 @@ export function relayPlugin(): Plugin {
               try {
                 provider = await providerFromClient(msg);
               } catch (error) {
-                send(ws, { type: 'society-error', error: error instanceof Error ? error.message : String(error) });
+                send(ws, { type: 'society-error', error: publicModelError(error) });
                 break;
               }
-              runBenchmark(msg.brief, provider, msg.model?.trim()).then((benchResult) => {
+              runBenchmark(msg.brief, provider, msg.model?.trim(), (event) => forwardSocietyEvent(ws, event)).then((benchResult) => {
                 send(ws, {
                   type: 'benchmark-result',
                   society: {
@@ -465,7 +530,7 @@ export function relayPlugin(): Plugin {
                   qualityScores: benchResult.qualityScores
                 });
               }).catch((err) => {
-                send(ws, { type: 'society-error', error: err.message || String(err) });
+                send(ws, { type: 'society-error', error: publicModelError(err) });
               });
               break;
             }

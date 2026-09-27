@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 import { getAgentSet, getAllAgents } from '../data/agents';
+import { modelPriceKnown } from '../core/llm/pricing';
 import { useCoreStore } from '../integration/store/coreStore';
 import { useTeamStore, useActiveTeam } from '../integration/store/teamStore';
+import { useUiStore } from '../integration/store/uiStore';
 import { useSceneManager } from '../simulation/SceneContext';
 import { USER_COLOR } from '../theme/brand';
 import ResetModal from './ResetModal';
@@ -31,6 +33,11 @@ const ProjectView: React.FC = () => {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const activeTeam = useActiveTeam();
+  const selectedModel = useUiStore((s) => s.llmConfig.model);
+  const estimatedCost = useCoreStore((s) => s.totalEstimatedCost);
+  const costLabel = modelPriceKnown(selectedModel)
+    ? `Total Est. $${estimatedCost.toFixed(3)}`
+    : 'Cost unavailable';
   const scene = useSceneManager();
 
   const hasLogs = actionLog.length > 0;
@@ -127,7 +134,7 @@ const ProjectView: React.FC = () => {
             className="flex items-center gap-2 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 rounded-lg transition-all active:scale-95 group ml-4 cursor-pointer"
           >
             <span className="text-[10px] font-black uppercase tracking-tight text-emerald-600">
-              Total Est. ${useCoreStore.getState().totalEstimatedCost.toFixed(3)}
+              {costLabel}
             </span>
             <Info size={11} className="text-emerald-500 group-hover:text-emerald-600" />
           </button>

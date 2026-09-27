@@ -102,7 +102,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ canvasRef, isFullscreen
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 relative flex flex-col">
+      <div className="flex-1 min-h-0 relative">
         {/* Obsidian style node graph view */}
         {activeTab === 'graph' && (
           <div className="absolute inset-0 z-10">
@@ -113,10 +113,10 @@ const SimulationView: React.FC<SimulationViewProps> = ({ canvasRef, isFullscreen
         {activeTab === 'room' && <PublicRoom />}
 
         {/* ThreeJS viewport — visibility: hidden instead of display: none to prevent Canvas/WebGL context loss */}
-        <div 
-          ref={canvasRef} 
-          className="w-full h-full relative bg-zinc-50"
-          style={{ visibility: activeTab === 'office' ? 'visible' : 'hidden', position: activeTab === 'office' ? 'relative' : 'absolute' }}
+        <div
+          ref={canvasRef}
+          className="absolute inset-0 bg-zinc-50"
+          style={{ visibility: activeTab === 'office' ? 'visible' : 'hidden' }}
         >
           <UIOverlay />
           {isFullscreen && selectedNpcIndex !== null && (

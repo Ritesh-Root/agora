@@ -17,6 +17,35 @@ describe('public room chat', () => {
     expect(room.registerCabins('g', ['cabin-a', 'cabin-b'])?.map((p) => p.cabinPoiId)).toEqual(['cabin-a', 'cabin-b']);
   });
 
+  it('does not give the host seat to the next person, or to a matching name', () => {
+    const room = new RoomState();
+    const host = room.join('11111111-1111-1111-1111-111111111111', 'Ritesh', '#111');
+    room.join('22222222-2222-2222-2222-222222222222', 'Observer', '#222');
+    expect(host.ok && host.hostToken).toBeTruthy();
+    const token = host.ok ? host.hostToken : '';
+
+    room.addChat({
+      id: 'private',
+      playerId: '11111111-1111-1111-1111-111111111111',
+      name: 'Ritesh',
+      text: 'only the host thread',
+      timestamp: 1,
+      audience: 'direct',
+      forPlayerId: '11111111-1111-1111-1111-111111111111',
+    });
+    room.leave('11111111-1111-1111-1111-111111111111');
+
+    const sameName = room.join('33333333-3333-3333-3333-333333333333', 'Ritesh', '#111');
+    expect(sameName.ok && sameName.info.isHost).toBe(false);
+    expect(room.canResume('11111111-1111-1111-1111-111111111111')).toBe(false);
+    expect(room.canResume('11111111-1111-1111-1111-111111111111', token)).toBe(true);
+
+    const reclaimed = room.join('11111111-1111-1111-1111-111111111111', 'Ritesh', '#111', token);
+    expect(reclaimed.ok && reclaimed.info.isHost).toBe(true);
+    expect(room.chatFor('11111111-1111-1111-1111-111111111111').map((entry) => entry.text)).toEqual(['only the host thread']);
+    expect(room.chatFor('22222222-2222-2222-2222-222222222222')).toEqual([]);
+  });
+
   it('keeps the latest 100 messages', () => {
     const room = new RoomState();
     for (let i = 0; i < 105; i++) {

@@ -6,6 +6,8 @@ import { useCoreStore } from '../integration/store/coreStore';
 import { useUiStore } from '../integration/store/uiStore';
 import { useRosterStore } from '../network/RosterStore';
 import { useSocietyStore } from '../integration/store/societyStore';
+import { getActiveAgentSet } from '../integration/store/teamStore';
+import { getAllAgents } from '../data/agents';
 import { MAX_PLAYERS } from '../../shared/protocol';
 import { networkClient } from '../network/NetworkClient';
 import BYOKModal from './BYOKModal';
@@ -18,6 +20,7 @@ const Header: React.FC = () => {
   const { llmConfig, isBYOKOpen, setBYOKOpen, isNegotiationOpen, setNegotiationOpen } = useUiStore();
   const { setViewMode } = useCoreStore();
   const roster = useRosterStore((s) => s.roster);
+  const swarmWorking = useSocietyStore((s) => s.isRunning || s.isBenchmarking);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const hasKey = !!llmConfig.apiKey;
 
@@ -37,29 +40,47 @@ const Header: React.FC = () => {
   };
 
   const handleRunAction = () => {
-    if (!briefInput.trim()) return;
-    
-    if (briefType === 'society') {
-      const config = useUiStore.getState().llmConfig;
-      networkClient.send({
-        type: 'run-society',
-        brief: briefInput.trim(),
-        apiKey: config.apiKey,
-        baseUrl: config.baseUrl,
-        model: config.model,
-      });
-    } else {
-      const config = useUiStore.getState().llmConfig;
-      useSocietyStore.getState().startBenchmark(briefInput.trim());
-      networkClient.send({
-        type: 'run-benchmark',
-        brief: briefInput.trim(),
-        apiKey: config.apiKey,
-        baseUrl: config.baseUrl,
-        model: config.model,
-      });
+    const brief = briefInput.trim();
+    if (!brief) return;
+
+    if (!networkClient.isOpen()) {
+      useSocietyStore.getState().setSocietyError('The room is not connected, so the swarm did not start.');
+      setBriefInput('');
+      setBriefModalOpen(false);
+      return;
     }
-    
+
+    const config = useUiStore.getState().llmConfig;
+    const agents = getAllAgents(getActiveAgentSet()).map((agent) => ({
+      name: agent.name,
+      description: agent.description,
+      model: agent.model,
+    }));
+
+    if (briefType === 'society') {
+      useCoreStore.getState().startProject(brief);
+      useSocietyStore.getState().startSociety(brief);
+      const sent = networkClient.send({
+        type: 'run-society',
+        brief,
+        apiKey: config.apiKey,
+        baseUrl: config.baseUrl,
+        model: config.model,
+        agents,
+      });
+      if (!sent) useSocietyStore.getState().setSocietyError('The room is not connected, so the swarm did not start.');
+    } else {
+      useSocietyStore.getState().startBenchmark(brief);
+      const sent = networkClient.send({
+        type: 'run-benchmark',
+        brief,
+        apiKey: config.apiKey,
+        baseUrl: config.baseUrl,
+        model: config.model,
+      });
+      if (!sent) useSocietyStore.getState().setSocietyError('The room is not connected, so the benchmark did not start.');
+    }
+
     setBriefInput('');
     setBriefModalOpen(false);
   };
@@ -103,6 +124,16 @@ const Header: React.FC = () => {
 
       {/* Right: Global Controls */}
       <div className="flex items-center gap-3">
+        {swarmWorking && (
+          <span
+            data-testid="swarm-working"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 h-9 rounded-full bg-white border border-zinc-200 text-[10px] font-black uppercase tracking-wider text-ink"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-butter animate-pulse" />
+            Agents working
+          </span>
+        )}
+
         {/* Run Society Button */}
         <button
           data-testid="run-swarm-btn"
@@ -228,6 +259,12 @@ const Header: React.FC = () => {
               </button>
             </div>
             
+            {briefType === 'society' && (
+              <p className="text-[10px] leading-relaxed text-zinc-500">
+                This run uses {getAllAgents(getActiveAgentSet()).map((agent) => agent.name).join(', ')}.
+              </p>
+            )}
+
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Brief Description</label>
               <textarea

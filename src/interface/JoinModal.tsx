@@ -50,9 +50,8 @@ const JoinModal: React.FC = () => {
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto overflow-hidden">
-      <div className="absolute inset-0 bg-zinc-100/80 backdrop-blur-xl animate-fade-in" />
-      <div className="relative w-full max-w-md bg-white rounded-[40px] shadow-[0_32px_64px_-12px_rgba(23,21,15,0.12)] p-8 md:p-10 border border-zinc-200/70 animate-slide-up">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-none overflow-hidden">
+      <div className="pointer-events-auto relative w-full max-w-md bg-white rounded-[40px] shadow-[0_32px_64px_-12px_rgba(23,21,15,0.12)] p-8 md:p-10 border border-zinc-200/70 animate-slide-up">
         <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="mb-6">

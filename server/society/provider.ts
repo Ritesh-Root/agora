@@ -2,7 +2,8 @@
  * Server-side OpenAI-compatible LLM provider interface and factory.
  * Automatically routes and maps request payloads dynamically depending on the key:
  * - NVIDIA NIM Catalog keys (starting with `nvapi-`) route to NVIDIA Integrate API
- * - Qwen/DashScope keys (starting with `sk-`) route to Alibaba Cloud DashScope API
+ * - Qwen Cloud / DashScope keys (starting with `sk-` / `sk-sp-`) route to Qwen Cloud
+ *   Token Plan compatible-mode (token-plan.maas.qwencloudapi.com) by default
  */
 
 export interface LLMLike {
@@ -21,14 +22,20 @@ export function createServerProvider(apiKey: string, options?: { baseUrl?: strin
     ? (requested.endsWith('/chat/completions') ? requested : `${requested.replace(/\/$/, '')}/chat/completions`)
     : isNvidia
       ? 'https://integrate.api.nvidia.com/v1/chat/completions'
-      : 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
+      : 'https://token-plan.maas.qwencloudapi.com/compatible-mode/v1/chat/completions';
 
   return {
     async generateCompletion(messages, tools, systemInstruction, modelName) {
       // If using NVIDIA NIM, map Qwen Cloud model tiers to the hosted qwen3.5 MoE model
-      let model = modelName || 'qwen-max';
+      let model = modelName || 'deepseek-v4.1-flash';
       if (isNvidia) {
-        if (model.includes('qwen-max') || model.includes('qwen-plus') || model.includes('qwen-turbo')) {
+        if (
+          model.includes('qwen-max') ||
+          model.includes('qwen-plus') ||
+          model.includes('qwen-turbo') ||
+          model.startsWith('qwen3.') ||
+          model === 'glm-5.3'
+        ) {
           model = 'qwen/qwen3.5-122b-a10b';
         }
       }
@@ -60,6 +67,8 @@ export function createServerProvider(apiKey: string, options?: { baseUrl?: strin
           // completion budget on hidden reasoning, returning empty content.
           body.chat_template_kwargs = { thinking: false };
         }
+      } else if (model.toLowerCase().includes('deepseek')) {
+        body.enable_thinking = false;
       }
 
       // NIM's qwen3.5 pool intermittently 500s on identical requests (~1 in 6),
@@ -67,6 +76,7 @@ export function createServerProvider(apiKey: string, options?: { baseUrl?: strin
       const MAX_TRIES = 3;
       for (let attempt = 1; ; attempt++) {
         try {
+          console.info(`[ServerProvider] model=${model}`);
           const response = await fetch(baseUrl, {
             method: 'POST',
             headers: {

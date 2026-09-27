@@ -72,6 +72,37 @@ describe('Society Orchestrator', () => {
   });
 });
 
+  it('runs the selected team on each agent model', async () => {
+    const calls: { model?: string; system?: string }[] = [];
+    const provider: LLMLike = {
+      async generateCompletion(_messages, _tools, systemInstruction, modelName) {
+        calls.push({ model: modelName, system: systemInstruction });
+        if (systemInstruction?.includes('You lead this team')) {
+          return {
+            content: JSON.stringify([
+              { id: 'a', title: 'Frame', role: 'Film Director', prompt: 'frame the spot' },
+              { id: 'b', title: 'Shoot', role: 'Cinematographer', prompt: 'choose the lens' },
+            ]),
+          };
+        }
+        return { content: 'A finished piece of the brief.' };
+      },
+    };
+
+    await runSociety('Agree the film before shooting', provider, {
+      team: [
+        { name: 'Film Director', description: 'Directs the spot', model: 'model-lead' },
+        { name: 'Cinematographer', description: 'Chooses the lens', model: 'model-camera' },
+      ],
+    });
+
+    expect(calls[0]?.model).toBe('model-lead');
+    expect(calls[0]?.system).toContain('Film Director');
+    expect(calls.some((call) => call.system?.includes('You are the Manager'))).toBe(false);
+    expect(calls.some((call) => call.system?.includes('You are the Lead'))).toBe(false);
+    expect(calls.some((call) => call.model === 'model-camera' && call.system?.includes('Cinematographer'))).toBe(true);
+  });
+
 describe('parsePlan', () => {
   it('parses a fenced JSON code block', () => {
     const tasks = parsePlan('```json\n[{"id":"a","title":"A","role":"worker","prompt":"do a"}]\n```');

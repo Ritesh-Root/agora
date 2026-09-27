@@ -1,7 +1,9 @@
 import { LLMMessage, LLMProvider, LLMResponse, LLMToolCall, LLMToolDefinition } from '../types';
 
-const QWEN_CHAT_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
-const QWEN_DEFAULT_MODEL = 'qwen-plus';
+import { QWEN_CLOUD_BASE_URL } from '../constants';
+
+const QWEN_CHAT_URL = `${QWEN_CLOUD_BASE_URL}/chat/completions`;
+const QWEN_DEFAULT_MODEL = 'deepseek-v4.1-flash';
 
 function extractTextContent(content: unknown): string | null {
   if (typeof content === 'string') return content;
@@ -86,6 +88,11 @@ export class QwenProvider implements LLMProvider {
     if (tools?.length) {
       payload.tools = tools;
       payload.tool_choice = 'auto';
+    }
+
+    // DeepSeek spends the completion on reasoning_content and can leave content empty.
+    if (modelName.toLowerCase().includes('deepseek')) {
+      payload.enable_thinking = false;
     }
 
     const isBrowser = typeof window !== 'undefined';
