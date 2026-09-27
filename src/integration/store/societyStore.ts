@@ -49,7 +49,9 @@ export interface BenchmarkResult {
 interface SocietyState {
   // Society run state
   isRunning: boolean;
-  stage: 'planning' | 'working' | 'debating' | 'assembling' | null;
+  stage: 'planning' | 'working' | 'debating' | 'assembling' | 'repairing' | 'cancel_requested' | null;
+  runStatus: 'running' | 'cancel_requested' | 'stopped' | 'complete' | 'needs_revision' | null;
+  restartAfterStop: boolean;
   brief: string;
   tasks: SocietyTask[];
   negotiation: SocietyNegotiation | null;
@@ -63,6 +65,17 @@ interface SocietyState {
   // Actions
   startSociety: (brief: string) => void;
   setStage: (stage: SocietyState['stage']) => void;
+  setRestartAfterStop: (pending: boolean) => void;
+  markRunStopped: () => void;
+  restoreRun: (run: {
+    brief: string;
+    status: NonNullable<SocietyState['runStatus']>;
+    stage: SocietyState['stage'];
+    tasks: Array<{ id: string; title: string; role: string; status: SocietyTask['status']; output?: string; attempt?: number }>;
+    synthesis: string;
+    wordCount?: number;
+    revisionLabel?: string;
+  }) => void;
   updateTask: (taskId: string, update: Partial<SocietyTask>) => void;
   addNegotiationTurn: (topic: string, turn: NegotiationRound) => void;
   setNegotiationScores: (topic: string, scores: NegotiationScore[]) => void;
@@ -84,6 +97,8 @@ interface SocietyState {
 export const useSocietyStore = create<SocietyState>((set) => ({
   isRunning: false,
   stage: null,
+  runStatus: null,
+  restartAfterStop: false,
   brief: '',
   tasks: [],
   negotiation: null,
@@ -102,10 +117,33 @@ export const useSocietyStore = create<SocietyState>((set) => ({
     result: null,
     error: null,
     stage: 'planning',
+    runStatus: 'running',
+    restartAfterStop: false,
     isSocietyPanelOpen: true,
   }),
 
   setStage: (stage) => set({ stage }),
+  setRestartAfterStop: (pending) => set({ restartAfterStop: pending }),
+  markRunStopped: () => set({ isRunning: false, stage: null, runStatus: 'stopped' }),
+  restoreRun: (run) => set({
+    isRunning: run.status === 'running' || run.status === 'cancel_requested',
+    runStatus: run.status,
+    stage: run.status === 'cancel_requested' ? 'cancel_requested' : run.stage,
+    brief: run.brief,
+    tasks: run.tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      role: task.role,
+      status: task.status,
+      output: task.output,
+      attempt: task.attempt,
+    })),
+    result: run.synthesis
+      ? { brief: run.brief, synthesis: run.synthesis, wordCount: run.wordCount, revisionLabel: run.revisionLabel, tasks: run.tasks, metrics: {} }
+      : null,
+    error: null,
+    isSocietyPanelOpen: true,
+  }),
 
   updateTask: (taskId, update) => set((state) => {
     const exists = state.tasks.some((t) => t.id === taskId);
@@ -127,7 +165,9 @@ export const useSocietyStore = create<SocietyState>((set) => ({
       });
     }
 
-    const stage = state.stage === 'debating' || state.stage === 'assembling' ? state.stage : 'working';
+    const stage = state.stage === 'debating' || state.stage === 'assembling' || state.stage === 'repairing' || state.stage === 'cancel_requested'
+      ? state.stage
+      : 'working';
     return { tasks: nextTasks, stage };
   }),
 
@@ -185,6 +225,7 @@ export const useSocietyStore = create<SocietyState>((set) => ({
     return {
       isRunning: false,
       stage: null,
+      runStatus: result.revisionLabel ? 'needs_revision' : 'complete',
       result,
       tasks: nextTasks,
       negotiation: nextNeg,
@@ -192,18 +233,24 @@ export const useSocietyStore = create<SocietyState>((set) => ({
     };
   }),
 
-  setSocietyError: (error) => set((state) => ({
-    isRunning: false,
-    stage: null,
-    isBenchmarking: false,
-    error,
-    isSocietyPanelOpen: !state.isBenchmarking,
-    isBenchmarkPanelOpen: state.isBenchmarking,
-  })),
+  setSocietyError: (error) => set((state) => {
+    const active = state.runStatus === 'running' || state.runStatus === 'cancel_requested';
+    return {
+      isRunning: active ? state.isRunning : false,
+      stage: active ? state.stage : null,
+      runStatus: active ? state.runStatus : null,
+      isBenchmarking: false,
+      error,
+      isSocietyPanelOpen: !state.isBenchmarking,
+      isBenchmarkPanelOpen: state.isBenchmarking,
+    };
+  }),
 
   resetSociety: () => set({
     isRunning: false,
     stage: null,
+    runStatus: null,
+    restartAfterStop: false,
     brief: '',
     tasks: [],
     negotiation: null,

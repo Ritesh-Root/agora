@@ -110,6 +110,52 @@ describe('Society Orchestrator', () => {
     expect(noted.some((note) => note.stage === 'assembling' && note.agent === 'Film Director')).toBe(true);
   });
 
+  it('labels a film draft that is still over the word limit after two repairs', async () => {
+    const longDraft = Array.from({ length: 400 }, () => 'word').join(' ');
+    const provider: LLMLike = {
+      async generateCompletion(_messages, _tools, systemInstruction) {
+        if (systemInstruction?.includes('You are the Manager')) {
+          return { content: JSON.stringify([{ id: 'a', title: 'Write', role: 'Worker', prompt: 'write' }]) };
+        }
+        return { content: longDraft };
+      },
+    };
+    const result = await runSociety(
+      'Required sections: problem, audience, priorities, and assigned next steps. Under 400 words.',
+      provider,
+    );
+    expect(result.documentStatus).toBe('needs_revision');
+    expect(result.revisionLabel).toBe('Needs revision: exceeds word limit');
+    expect(result.metrics.repairCalls).toBe(2);
+    expect(result.wordCount).toBe(400);
+    expect(result.synthesis).toBe(longDraft);
+  });
+
+  it('accepts a film draft once a repair brings it within 399 words', async () => {
+    let leadCalls = 0;
+    const provider: LLMLike = {
+      async generateCompletion(_messages, _tools, systemInstruction) {
+        if (systemInstruction?.includes('You are the Manager')) {
+          return { content: JSON.stringify([{ id: 'a', title: 'Write', role: 'Worker', prompt: 'write' }]) };
+        }
+        if (systemInstruction?.includes('You are a Worker')) {
+          return { content: 'A finished piece of the brief.' };
+        }
+        leadCalls += 1;
+        if (leadCalls === 1) return { content: Array.from({ length: 400 }, () => 'word').join(' ') };
+        return { content: 'Problem\nThe team disagrees.\n\nAudience\nA small film crew.\n\nPriorities\nAgree the shot.\n\nAssigned next steps\nThe director writes the list.' };
+      },
+    };
+    const result = await runSociety(
+      'Required sections: problem, audience, priorities, and assigned next steps. Under 400 words.',
+      provider,
+    );
+    expect(result.documentStatus).toBe('accepted');
+    expect(result.revisionLabel).toBeUndefined();
+    expect(result.wordCount).toBeLessThanOrEqual(399);
+    expect(result.metrics.repairCalls).toBe(1);
+  });
+
 describe('parsePlan', () => {
   it('parses a fenced JSON code block', () => {
     const tasks = parsePlan('```json\n[{"id":"a","title":"A","role":"worker","prompt":"do a"}]\n```');

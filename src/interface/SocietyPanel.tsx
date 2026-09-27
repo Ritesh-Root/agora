@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { X, Brain, Shield, AlertTriangle, CheckCircle, Clock, Users, Loader2, Scale } from 'lucide-react';
 import { useSocietyStore } from '../integration/store/societyStore';
+import { networkClient } from '../network/NetworkClient';
 
 function usageText(metrics: {
   calls?: number;
@@ -11,16 +12,19 @@ function usageText(metrics: {
   totalPromptTokens?: number;
   totalCompletionTokens?: number;
   missingUsage?: number;
+  repairCalls?: number;
 }): string {
   const planned = metrics.calls ?? 0;
   const total = metrics.totalCalls ?? planned;
-  const other = Math.max(0, total - planned);
+  const repair = metrics.repairCalls ?? 0;
+  const other = Math.max(0, total - planned - repair);
   const missing = metrics.missingUsage ?? 0;
   const parts = [
     `${total} model calls`,
     `${planned} planning, workers, and merge`,
   ];
   if (other > 0) parts.push(`${other} debate and other`);
+  if (repair > 0) parts.push(`${repair} repair`);
   parts.push(`${metrics.totalPromptTokens ?? metrics.promptTokens ?? 0} input tokens`);
   parts.push(`${metrics.totalCompletionTokens ?? metrics.completionTokens ?? 0} output tokens`);
   if (missing > 0) parts.push(`${missing} calls had no token count`);
@@ -42,6 +46,7 @@ export const SocietyPanel: React.FC = () => {
   const {
     isRunning,
     stage,
+    runStatus,
     brief,
     tasks,
     negotiation,
@@ -135,17 +140,32 @@ export const SocietyPanel: React.FC = () => {
               <p className="text-xs text-zinc-600">No document was produced.</p>
             )}
 
-            {isRunning && (stage === 'debating' || stage === 'assembling') && (
+            {isRunning && (stage === 'debating' || stage === 'assembling' || stage === 'repairing' || stage === 'cancel_requested') && (
               <p className="text-xs font-bold text-ink" data-testid="swarm-stage">
-                {stage === 'debating' ? 'Debating.' : 'Assembling document.'} Finished task cards are not the document yet.
+                {stage === 'debating'
+                  ? 'Debating. Finished task cards are not the document yet.'
+                  : stage === 'assembling'
+                    ? 'Assembling document. Finished task cards are not the document yet.'
+                    : stage === 'repairing'
+                      ? 'Repairing document.'
+                      : 'Cancellation requested.'}
               </p>
+            )}
+            {!isRunning && runStatus === 'stopped' && (
+              <p className="text-xs font-bold text-ink" data-testid="swarm-stage">Execution stopped</p>
             )}
 
             {result?.synthesis && (
               <div className="p-4 border border-zinc-200/70 bg-white rounded-2xl shadow-sm">
                 <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block">Lead synthesis</span>
+                {typeof result.wordCount === 'number' && (
+                  <p className="text-[10px] font-bold text-ink mt-1" data-testid="document-word-count">{result.wordCount} words</p>
+                )}
+                {result.revisionLabel && (
+                  <p className="text-xs font-bold text-amber-700 mt-1" data-testid="document-revision">{result.revisionLabel}</p>
+                )}
                 <p className="text-xs text-zinc-700 whitespace-pre-wrap leading-relaxed mt-2">{result.synthesis}</p>
-                <p className="text-[10px] text-zinc-500 mt-3">This document is only in this tab. A reload clears it.</p>
+                <p className="text-[10px] text-zinc-500 mt-3">Save a copy if you want a file of your own. A server restart clears the room copy.</p>
                 <button
                   type="button"
                   onClick={() => saveDocument(result.synthesis)}
@@ -307,7 +327,28 @@ export const SocietyPanel: React.FC = () => {
           {isRunning ? (
             <div className="flex items-center gap-2 text-zinc-400 text-xs font-semibold">
               <Loader2 className="animate-spin text-ink" size={14} />
-              {stage === 'debating' ? 'Debating' : stage === 'assembling' ? 'Assembling document' : 'Executing agent society...'}
+              {stage === 'debating'
+                ? 'Debating'
+                : stage === 'assembling'
+                  ? 'Assembling document'
+                  : stage === 'repairing'
+                    ? 'Repairing document'
+                    : stage === 'cancel_requested'
+                      ? 'Cancellation requested'
+                      : 'Executing agent society...'}
+              {stage !== 'cancel_requested' && (
+                <button
+                  type="button"
+                  data-testid="brief-cancel-btn"
+                  onClick={() => {
+                    useSocietyStore.getState().setRestartAfterStop(true);
+                    networkClient.send({ type: 'cancel-run' });
+                  }}
+                  className="ml-2 px-3 py-1.5 rounded-lg border border-zinc-200 text-[10px] font-black uppercase tracking-widest text-ink"
+                >
+                  Cancel and restart
+                </button>
+              )}
             </div>
           ) : (
             <button onClick={onClose} className="px-5 py-2.5 bg-ink hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-black/10">

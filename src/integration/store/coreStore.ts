@@ -72,6 +72,8 @@ interface CoreState {
   referenceImages: string[]
   phase: ProjectPhase
   finalOutput: string | null
+  documentWordCount: number | null
+  documentRevision: string | null
   availableModels: string[]
   totalTokenUsage: LLMTokenUsage
   agentTokenUsage: Record<number, LLMTokenUsage>
@@ -114,6 +116,7 @@ interface CoreState {
   setPhase: (phase: ProjectPhase) => void;
   startProject: (brief: string) => void;
   setFinalOutput: (output: string) => void;
+  setDocumentMeta: (wordCount: number | null, revision: string | null) => void;
   setFinalAsset: (type: 'image' | 'audio' | 'video', content: string) => void;
   setIsGeneratingAsset: (isGenerating: boolean) => void;
   setReviewingOutput: (val: boolean) => void;
@@ -161,6 +164,8 @@ export const useCoreStore = create<CoreState>()(
       referenceImages: [],
       phase: 'idle',
       finalOutput: null,
+      documentWordCount: null,
+      documentRevision: null,
       availableModels: [...AVAILABLE_MODELS.text],
       totalTokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
       agentTokenUsage: {},
@@ -191,6 +196,8 @@ export const useCoreStore = create<CoreState>()(
         userBrief: '',
         phase: 'idle',
         finalOutput: null,
+        documentWordCount: null,
+        documentRevision: null,
         tasks: [],
         actionLog: [],
         debugLog: [],
@@ -220,8 +227,9 @@ export const useCoreStore = create<CoreState>()(
       })),
       clearReferenceImages: () => set({ referenceImages: [] }),
       setPhase: (phase) => set({ phase }),
-      startProject: (brief) => set({ userBrief: brief, phase: 'working', finalAssetType: 'text', finalAssetContent: null, tasks: [] }),
+      startProject: (brief) => set({ userBrief: brief, phase: 'working', finalAssetType: 'text', finalAssetContent: null, tasks: [], documentWordCount: null, documentRevision: null }),
       setFinalOutput: (output) => set({ finalOutput: output }),
+      setDocumentMeta: (wordCount: number | null, revision: string | null) => set({ documentWordCount: wordCount, documentRevision: revision }),
       setFinalAsset: (type, content) => set({ finalAssetType: type, finalAssetContent: content, isGeneratingAsset: false }),
       setIsGeneratingAsset: (isGenerating) => set({ isGeneratingAsset: isGenerating }),
       setReviewingOutput: (val) => set({ isReviewingOutput: val }),

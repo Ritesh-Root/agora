@@ -4,6 +4,26 @@ import { MAX_PLAYERS, PlayerInfo, RoomChatMessage } from '../shared/protocol';
 
 const MAX_CHAT = 100;
 
+export interface RoomRunTask {
+  id: string;
+  title: string;
+  role: string;
+  status: 'pending' | 'running' | 'done' | 'healing' | 'escalated';
+  output?: string;
+  attempt?: number;
+}
+
+export interface RoomRun {
+  id: string;
+  brief: string;
+  status: 'running' | 'cancel_requested' | 'stopped' | 'complete' | 'needs_revision';
+  stage: 'planning' | 'working' | 'debating' | 'assembling' | 'repairing' | null;
+  tasks: RoomRunTask[];
+  synthesis: string;
+  wordCount?: number;
+  revisionLabel?: string;
+}
+
 /** Returns trimmed chat text, or null when it should be dropped. */
 export function normalizeChatText(text: unknown): string | null {
   if (typeof text !== 'string') return null;
@@ -29,6 +49,7 @@ export class RoomState {
   private hostPlayerId: string | null = null;
   private hostToken: string | null = null;
   private chat: RoomChatMessage[] = [];
+  private run: RoomRun | null = null;
 
   public cabinsReady(): boolean {
     return this.cabinPoiIds !== null;
@@ -122,6 +143,91 @@ export class RoomState {
       this.hostToken = null;
       this.cabinPoiIds = null;
     }
+  }
+
+  /** A running or cancelling run blocks another Execute. A finished run stays so a reconnect can restore it. */
+  public beginRun(brief: string): { ok: true; run: RoomRun } | { ok: false; reason: 'busy' } {
+    if (this.run && (this.run.status === 'running' || this.run.status === 'cancel_requested')) {
+      return { ok: false, reason: 'busy' };
+    }
+    this.run = {
+      id: randomUUID(),
+      brief,
+      status: 'running',
+      stage: 'planning',
+      tasks: [],
+      synthesis: '',
+    };
+    return { ok: true, run: this.run };
+  }
+
+  public currentRun(): RoomRun | null {
+    if (!this.run) return null;
+    return { ...this.run, tasks: this.run.tasks.map((task) => ({ ...task })) };
+  }
+
+  public ownsRun(id: string): boolean {
+    return this.run?.id === id;
+  }
+
+  public cancelRequested(id: string): boolean {
+    return !!this.run && this.run.id === id && (this.run.status === 'cancel_requested' || this.run.status === 'stopped');
+  }
+
+  public requestCancel(id: string): boolean {
+    if (!this.run || this.run.id !== id || this.run.status !== 'running') return false;
+    this.run.status = 'cancel_requested';
+    return true;
+  }
+
+  public markStopped(id: string): boolean {
+    if (!this.run || this.run.id !== id) return false;
+    if (this.run.status !== 'running' && this.run.status !== 'cancel_requested') return false;
+    this.run.status = 'stopped';
+    this.run.stage = null;
+    return true;
+  }
+
+  public noteStage(id: string, stage: RoomRun['stage']): void {
+    if (!this.run || this.run.id !== id) return;
+    if (this.run.status !== 'running') return;
+    this.run.stage = stage;
+  }
+
+  public noteTask(id: string, task: Partial<RoomRunTask> & { id: string }): void {
+    if (!this.run || this.run.id !== id) return;
+    if (this.run.status !== 'running' && this.run.status !== 'cancel_requested') return;
+    const existing = this.run.tasks.find((item) => item.id === task.id);
+    if (existing) {
+      if (task.title) existing.title = task.title;
+      if (task.role) existing.role = task.role;
+      if (task.status) existing.status = task.status;
+      if (task.output !== undefined) existing.output = task.output;
+      if (task.attempt !== undefined) existing.attempt = task.attempt;
+    } else {
+      this.run.tasks.push({
+        id: task.id,
+        title: task.title || 'Untitled',
+        role: task.role || 'worker',
+        status: task.status || 'running',
+        output: task.output,
+        attempt: task.attempt,
+      });
+    }
+    if (this.run.stage === 'planning' || this.run.stage === 'working' || this.run.stage === null) {
+      this.run.stage = 'working';
+    }
+  }
+
+  public finishRun(id: string, patch: { status: 'complete' | 'needs_revision'; synthesis: string; wordCount?: number; revisionLabel?: string }): boolean {
+    if (!this.run || this.run.id !== id) return false;
+    if (this.run.status === 'stopped') return false;
+    this.run.status = patch.status;
+    this.run.synthesis = patch.synthesis;
+    this.run.wordCount = patch.wordCount;
+    this.run.revisionLabel = patch.revisionLabel;
+    this.run.stage = null;
+    return true;
   }
 
   public getRoster(): PlayerInfo[] {

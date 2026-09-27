@@ -66,6 +66,9 @@ export interface SocietyResultWire {
   }>;
   /** Lead-merged document. Distinct from negotiation.synthesis. */
   synthesis?: string;
+  wordCount?: number;
+  /** Present when the draft is kept but is not a successful completion. */
+  revisionLabel?: string;
   negotiation?: {
     topic: string;
     rounds: number;
@@ -91,6 +94,8 @@ export interface SocietyResultWire {
     totalCompletionTokens?: number;
     /** Calls that returned no token counts, including calls that failed. */
     missingUsage?: number;
+    /** Shortening passes after the first draft. Included in totalCalls and wallMs. */
+    repairCalls?: number;
     phases?: { managerMs: number; workersMs: number; beforeSynthesisMs: number; leadMs: number };
   };
   research?: {
@@ -109,7 +114,8 @@ export type ClientMessage =
   | { type: 'run-society'; brief: string; baseUrl?: string; apiKey?: string; model?: string; agents?: { name: string; description: string; model?: string }[] }
   | { type: 'run-benchmark'; brief: string; baseUrl?: string; apiKey?: string; model?: string }
   | { type: 'room-chat'; text: string; baseUrl?: string; apiKey?: string; model?: string; agents?: { name: string; description: string }[] }
-  | { type: 'decision-reply'; id: string; action: 'approve' | 'edit' | 'reject'; text?: string };
+  | { type: 'decision-reply'; id: string; action: 'approve' | 'edit' | 'reject'; text?: string }
+  | { type: 'cancel-run' };
 
 export type ServerMessage =
   | { type: 'joined'; me: PlayerInfo; roster: PlayerInfo[]; hostToken?: string }
@@ -122,7 +128,9 @@ export type ServerMessage =
   | { type: 'society-started'; brief: string; taskCount: number }
   | { type: 'society-task-update'; taskId: string; title: string; role: string; status: 'running' | 'done' | 'healing' | 'escalated'; output?: string; attempt?: number; researching?: boolean }
   | { type: 'society-negotiation'; topic: string; round: number; agent: string; argument: string; scores?: Array<{ agent: string; score: number; reason: string }> }
-  | { type: 'society-stage'; stage: 'debating' | 'assembling' }
+  | { type: 'society-stage'; stage: 'debating' | 'assembling' | 'repairing' }
+  | { type: 'society-run-status'; runId: string; status: 'cancel_requested' | 'stopped' }
+  | { type: 'society-snapshot'; run: { runId: string; brief: string; status: 'running' | 'cancel_requested' | 'stopped' | 'complete' | 'needs_revision'; stage: 'planning' | 'working' | 'debating' | 'assembling' | 'repairing' | null; tasks: Array<{ id: string; title: string; role: string; status: 'pending' | 'running' | 'done' | 'healing' | 'escalated'; output?: string; attempt?: number }>; synthesis: string; wordCount?: number; revisionLabel?: string } }
   | { type: 'society-complete'; result: SocietyResultWire }
   | { type: 'society-error'; error: string }
   | { type: 'room-chat'; message: RoomChatMessage }

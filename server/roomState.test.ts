@@ -57,3 +57,33 @@ describe('public room chat', () => {
     expect(chat[99].id).toBe('104');
   });
 });
+
+describe('room run', () => {
+  it('keeps one active run and ignores a late finish from an older id', () => {
+    const room = new RoomState();
+    const first = room.beginRun('one');
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(room.beginRun('two').ok).toBe(false);
+    expect(room.requestCancel(first.run.id)).toBe(true);
+    expect(room.cancelRequested(first.run.id)).toBe(true);
+    expect(room.markStopped(first.run.id)).toBe(true);
+    const second = room.beginRun('two');
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(room.finishRun(first.run.id, { status: 'complete', synthesis: 'old' })).toBe(false);
+    expect(room.currentRun()?.synthesis).toBe('');
+    expect(room.finishRun(second.run.id, { status: 'complete', synthesis: 'new', wordCount: 1 })).toBe(true);
+    expect(room.currentRun()?.synthesis).toBe('new');
+  });
+
+  it('keeps the run after the room empties so a reconnect can restore it', () => {
+    const room = new RoomState();
+    const host = room.join('h', 'Host', '#111');
+    expect(host.ok).toBe(true);
+    const begun = room.beginRun('brief');
+    expect(begun.ok).toBe(true);
+    room.leave('h');
+    expect(room.currentRun()?.brief).toBe('brief');
+  });
+});

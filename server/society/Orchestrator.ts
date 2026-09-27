@@ -13,6 +13,13 @@
  */
 
 import { judgeWorkerOutput } from './decider/gates';
+import {
+  constraintsFromBrief,
+  countDocumentWords,
+  documentProblems,
+  MAX_DOCUMENT_REPAIRS,
+  revisionLabel,
+} from './documentCheck';
 import { takeBossEdit } from './decider/live';
 import { beginResearch, researchForTask, sourcesMarkdown } from '../research/research';
 
@@ -57,6 +64,10 @@ export interface SocietyResult {
   tasks: TaskResult[];
   /** Lead-merged final deliverable (empty if every worker failed). */
   synthesis: string;
+  wordCount: number;
+  /** Set when the draft is kept but must not be treated as a successful document. */
+  revisionLabel?: string;
+  documentStatus: 'accepted' | 'needs_revision' | 'stopped';
   metrics: {
     taskCount: number;
     /** Peak simultaneous workers — proves real parallelism. */
@@ -67,6 +78,7 @@ export interface SocietyResult {
     calls: number;
     promptTokens: number;
     completionTokens: number;
+    repairCalls: number;
     phases: {
       managerMs: number;
       workersMs: number;
@@ -90,6 +102,8 @@ export interface OrchestratorOptions {
   beforeSynthesis?: (results: TaskResult[]) => Promise<string | void>;
   /** Selected team. When present, the run uses these names and models instead of Manager/Worker/Lead. */
   team?: { name: string; description: string; model?: string }[];
+  /** True after cancel. In-flight provider calls may still finish; later stages must not start. */
+  shouldStop?: () => boolean;
 }
 
 function prepareRequest(provider: LLMLike, info: { stage: string; agent: string; attempt?: number }): void {
@@ -365,7 +379,9 @@ export async function runSociety(
   const outputs = new Map<string, string>();
   const results: TaskResult[] = [];
   const workersStarted = Date.now();
+  const stopped = () => options.shouldStop?.() === true;
   for (const wave of dependencyWaves(tasks)) {
+    if (stopped()) break;
     const waveResults = await Promise.all(wave.map((task) => {
       const siblings = wave.filter((other) => other.id !== task.id).map((other) => other.title);
       const depText = (task.deps ?? [])
@@ -383,15 +399,15 @@ export async function runSociety(
   const workersMs = Date.now() - workersStarted;
 
   const beforeStarted = Date.now();
-  const leadNotes = (await options.beforeSynthesis?.(results)) || '';
+  const leadNotes = stopped() ? '' : ((await options.beforeSynthesis?.(results)) || '');
   const beforeSynthesisMs = Date.now() - beforeStarted;
 
   let synthesis = '';
   const doneOutputs = results.filter((r) => r.status === 'done' && r.output);
   const leadStarted = Date.now();
-  if (doneOutputs.length > 0) {
+  const leadName = team[0]?.name;
+  if (doneOutputs.length > 0 && !stopped()) {
     onEvent?.({ type: 'society-synthesizing' });
-    const leadName = team[0]?.name;
     const leadSystem = leadName
       ? `You are ${leadName}. Merge the teammate outputs into ONE coherent, complete, non-redundant deliverable that fully answers the brief. Respond with the final deliverable only.`
       : 'You are the Lead of an agent society. Merge the worker outputs into ONE coherent, ' +
@@ -414,13 +430,55 @@ export async function runSociety(
     const cited = sourcesMarkdown();
     if (cited && synthesis && !synthesis.includes('## Sources')) synthesis += cited;
   }
-  if (doneOutputs.length > 0 && !synthesis.trim()) throw new Error('The run finished without a document.');
+
+  const constraints = constraintsFromBrief(brief);
+  let repairCalls = 0;
+  if (synthesis && !stopped() && (constraints.wordLimit !== null || constraints.sections)) {
+    for (let attempt = 1; attempt <= MAX_DOCUMENT_REPAIRS; attempt += 1) {
+      const problems = documentProblems(synthesis, constraints);
+      if (problems.length === 0 || stopped()) break;
+      onEvent?.({ type: 'society-repairing', attempt });
+      prepareRequest(provider, { stage: 'repair', agent: leadName ?? 'Lead', attempt });
+      const repaired = await provider.generateCompletion(
+        [{
+          role: 'user',
+          content: [
+            `Brief:\n${brief}`,
+            problems.map((problem) => problem.detail).join('\n'),
+            'Rewrite the document. Keep the required content. Stay within the word limit. Do not add budget figures, invented research, or quotes.',
+            'Respond with the document only.',
+            synthesis,
+          ].join('\n\n'),
+        }],
+        undefined,
+        'You revise a document so it meets the brief. Respond with the document only.',
+        modelFor(team, leadName ?? '', managerModel),
+      );
+      repairCalls += 1;
+      const next = (repaired.content ?? '').trim();
+      if (next) synthesis = next;
+    }
+  }
+
+  if (!stopped() && doneOutputs.length > 0 && !synthesis.trim()) {
+    throw new Error('The run finished without a document.');
+  }
   const leadMs = Date.now() - leadStarted;
+  const problems = synthesis ? documentProblems(synthesis, constraints) : [];
+  const label = stopped() ? undefined : revisionLabel(problems);
+  const documentStatus = stopped()
+    ? 'stopped'
+    : label
+      ? 'needs_revision'
+      : 'accepted';
 
   return {
     brief,
     tasks: results,
     synthesis,
+    wordCount: countDocumentWords(synthesis),
+    revisionLabel: label,
+    documentStatus,
     metrics: {
       taskCount: tasks.length,
       maxConcurrency: tracker.peak(),
@@ -430,6 +488,7 @@ export async function runSociety(
       calls: usage.calls,
       promptTokens: usage.promptTokens,
       completionTokens: usage.completionTokens,
+      repairCalls,
       phases: { managerMs, workersMs, beforeSynthesisMs, leadMs },
     },
   };

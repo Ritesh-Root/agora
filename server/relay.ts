@@ -40,9 +40,18 @@ function send(ws: WsSocket, msg: ServerMessage): void {
   }
 }
 
-function forwardSocietyEvent(ws: WsSocket, event: { type: string; [key: string]: any }): void {
+function forwardSocietyEvent(
+  ws: WsSocket,
+  event: { type: string; [key: string]: any },
+  tracked?: { runId: string; room: RoomState; deliver: (msg: ServerMessage) => void },
+): void {
+  if (tracked && !tracked.room.ownsRun(tracked.runId)) return;
+  const deliver = tracked?.deliver ?? ((msg: ServerMessage) => send(ws, msg));
+  const runId = tracked?.runId;
+  const room = tracked?.room;
   if (event.type === 'task-research') {
-    send(ws, {
+    if (runId && room) room.noteTask(runId, { id: event.taskId, title: event.title, role: event.role, status: 'running' });
+    deliver({
       type: 'society-task-update',
       taskId: event.taskId,
       title: event.title,
@@ -51,7 +60,8 @@ function forwardSocietyEvent(ws: WsSocket, event: { type: string; [key: string]:
       researching: true,
     });
   } else if (event.type === 'task-start') {
-    send(ws, {
+    if (runId && room) room.noteTask(runId, { id: event.taskId, title: event.title, role: event.role, status: 'running' });
+    deliver({
       type: 'society-task-update',
       taskId: event.taskId,
       title: event.title,
@@ -59,7 +69,8 @@ function forwardSocietyEvent(ws: WsSocket, event: { type: string; [key: string]:
       status: 'running',
     });
   } else if (event.type === 'task-healing') {
-    send(ws, {
+    if (runId && room) room.noteTask(runId, { id: event.taskId, title: event.title, role: event.role, status: 'healing', attempt: event.attempt });
+    deliver({
       type: 'society-task-update',
       taskId: event.taskId,
       title: event.title,
@@ -68,7 +79,17 @@ function forwardSocietyEvent(ws: WsSocket, event: { type: string; [key: string]:
       attempt: event.attempt,
     });
   } else if (event.type === 'task-done') {
-    send(ws, {
+    if (runId && room) {
+      room.noteTask(runId, {
+        id: event.taskId,
+        title: event.title,
+        role: event.role,
+        status: event.status === 'done' ? 'done' : 'escalated',
+        output: event.output,
+        attempt: event.attempts,
+      });
+    }
+    deliver({
       type: 'society-task-update',
       taskId: event.taskId,
       title: event.title,
@@ -78,7 +99,11 @@ function forwardSocietyEvent(ws: WsSocket, event: { type: string; [key: string]:
       attempt: event.attempts,
     });
   } else if (event.type === 'society-synthesizing') {
-    send(ws, { type: 'society-stage', stage: 'assembling' });
+    if (runId && room) room.noteStage(runId, 'assembling');
+    deliver({ type: 'society-stage', stage: 'assembling' });
+  } else if (event.type === 'society-repairing') {
+    if (runId && room) room.noteStage(runId, 'repairing');
+    deliver({ type: 'society-stage', stage: 'repairing' });
   }
 }
 
@@ -258,6 +283,22 @@ export function relayPlugin(): Plugin {
                 ...(result.hostToken ? { hostToken: result.hostToken } : {}),
               });
               send(ws, { type: 'room-chat-history', messages: room.chatFor(id) });
+              const restored = room.currentRun();
+              if (restored) {
+                send(ws, {
+                  type: 'society-snapshot',
+                  run: {
+                    runId: restored.id,
+                    brief: restored.brief,
+                    status: restored.status,
+                    stage: restored.stage,
+                    tasks: restored.tasks,
+                    synthesis: restored.synthesis,
+                    wordCount: restored.wordCount,
+                    revisionLabel: restored.revisionLabel,
+                  },
+                });
+              }
               broadcastExcept(id, { type: 'roster-update', roster: room.getRoster() });
               break;
             }
@@ -353,11 +394,36 @@ export function relayPlugin(): Plugin {
               ws.close();
               break;
             }
+            case 'cancel-run': {
+              if (!playerId || !room.isHost(playerId)) {
+                send(ws, { type: 'society-error', error: 'Only the room host can run the swarm.' });
+                break;
+              }
+              const active = room.currentRun();
+              if (!active || !room.requestCancel(active.id)) {
+                send(ws, { type: 'society-error', error: 'There is no run to cancel.' });
+                break;
+              }
+              send(ws, { type: 'society-run-status', runId: active.id, status: 'cancel_requested' });
+              break;
+            }
             case 'run-society': {
               if (!playerId || !room.isHost(playerId)) {
                 send(ws, { type: 'society-error', error: 'Only the room host can run the swarm.' });
                 break;
               }
+              const begun = room.beginRun(msg.brief);
+              if (!begun.ok) {
+                send(ws, { type: 'society-error', error: 'A run is already in progress.' });
+                break;
+              }
+              const runId = begun.run.id;
+              const deliver = (message: ServerMessage) => {
+                if (!room.ownsRun(runId)) return;
+                const host = room.getRoster().find((player) => player.isHost);
+                const sock = host ? sockets.get(host.id) : undefined;
+                if (sock) send(sock, message);
+              };
               // Demo/dev replay: when SOCIETY_REPLAY points at a recorded run's
               // message schedule, stream those events instead of running live.
               const societyReplay = process.env.SOCIETY_REPLAY;
@@ -401,20 +467,22 @@ export function relayPlugin(): Plugin {
 
               const model = msg.model?.trim();
               const team = sanitizeTeamAgents(msg.agents);
-              const runId = randomUUID();
               provider.prepareRequest({ runId, stage: 'planning', agent: team[0]?.name ?? 'Manager', attempt: 1 });
               let negotiationRes: any;
               runSociety(msg.brief, provider, {
                 models: model ? { manager: model, worker: model } : undefined,
                 team,
-                onEvent: (event) => forwardSocietyEvent(ws, event),
+                shouldStop: () => room.cancelRequested(runId),
+                onEvent: (event) => forwardSocietyEvent(ws, event, { runId, room, deliver }),
                 beforeSynthesis: async (tasks) => {
+                  if (room.cancelRequested(runId)) return '';
                   try {
                     const prepared = await leadNotesFromConflict(msg.brief, tasks, provider, (event) => {
                       if (event.type === 'society-debating') {
-                        send(ws, { type: 'society-stage', stage: 'debating' });
+                        if (room.ownsRun(runId)) room.noteStage(runId, 'debating');
+                        deliver({ type: 'society-stage', stage: 'debating' });
                       } else if (event.type === 'negotiation-turn') {
-                        send(ws, {
+                        deliver({
                           type: 'society-negotiation',
                           topic: event.topic ?? 'Worker outputs',
                           round: event.round,
@@ -422,7 +490,7 @@ export function relayPlugin(): Plugin {
                           argument: event.argument
                         });
                       } else if (event.type === 'negotiation-scores') {
-                        send(ws, {
+                        deliver({
                           type: 'society-negotiation',
                           topic: event.topic ?? 'Worker outputs',
                           round: event.round,
@@ -449,8 +517,27 @@ export function relayPlugin(): Plugin {
                   }
                 }
               }).then(async (result) => {
+                if (!room.ownsRun(runId)) return;
+                if (result.documentStatus === 'stopped') {
+                  room.markStopped(runId);
+                  deliver({ type: 'society-run-status', runId, status: 'stopped' });
+                  endRunStats();
+                  clearBoss();
+                  return;
+                }
+                const recorded = room.finishRun(runId, {
+                  status: result.revisionLabel ? 'needs_revision' : 'complete',
+                  synthesis: result.synthesis,
+                  wordCount: result.wordCount,
+                  revisionLabel: result.revisionLabel,
+                });
+                if (!recorded) {
+                  endRunStats();
+                  clearBoss();
+                  return;
+                }
                 const counted = provider.takeUsage();
-                send(ws, {
+                deliver({
                   type: 'society-complete',
                   result: {
                     brief: result.brief,
@@ -464,6 +551,8 @@ export function relayPlugin(): Plugin {
                       healed: t.healed
                     })),
                     synthesis: result.synthesis,
+                    wordCount: result.wordCount,
+                    revisionLabel: result.revisionLabel,
                     negotiation: negotiationRes,
                     metrics: {
                       ...result.metrics,
@@ -492,7 +581,11 @@ export function relayPlugin(): Plugin {
               }).catch((err) => {
                 endRunStats();
                 clearBoss();
-                send(ws, { type: 'society-error', error: publicModelError(err) });
+                if (room.ownsRun(runId)) {
+                  room.markStopped(runId);
+                  deliver({ type: 'society-run-status', runId, status: 'stopped' });
+                  deliver({ type: 'society-error', error: publicModelError(err) });
+                }
               });
               break;
             }

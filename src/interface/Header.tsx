@@ -9,7 +9,7 @@ import { useSocietyStore } from '../integration/store/societyStore';
 import { getActiveAgentSet } from '../integration/store/teamStore';
 import { getAllAgents } from '../data/agents';
 import { MAX_PLAYERS } from '../../shared/protocol';
-import { networkClient } from '../network/NetworkClient';
+import { networkClient, startSwarm } from '../network/NetworkClient';
 import BYOKModal from './BYOKModal';
 import InfoModal from './InfoModal';
 import { NegotiationArena } from './NegotiationArena';
@@ -26,9 +26,13 @@ const Header: React.FC = () => {
     ? 'Debating'
     : swarmStage === 'assembling'
       ? 'Assembling document'
-      : swarmStage === 'planning'
-        ? 'Planning'
-        : 'Agents working';
+      : swarmStage === 'repairing'
+        ? 'Repairing document'
+        : swarmStage === 'cancel_requested'
+          ? 'Cancellation requested'
+          : swarmStage === 'planning'
+            ? 'Planning'
+            : 'Agents working';
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const hasKey = !!llmConfig.apiKey;
 
@@ -59,28 +63,14 @@ const Header: React.FC = () => {
     }
 
     const config = useUiStore.getState().llmConfig;
-    const selectedModel = config.model?.trim();
-    const agents = getAllAgents(getActiveAgentSet()).map((agent) => {
-      const override = agent.model?.trim();
-      return {
-        name: agent.name,
-        description: agent.description,
-        model: override && override !== selectedModel ? override : undefined,
-      };
-    });
 
     if (briefType === 'society') {
-      useCoreStore.getState().startProject(brief);
-      useSocietyStore.getState().startSociety(brief);
-      const sent = networkClient.send({
-        type: 'run-society',
-        brief,
-        apiKey: config.apiKey,
-        baseUrl: config.baseUrl,
-        model: config.model,
-        agents,
-      });
-      if (!sent) useSocietyStore.getState().setSocietyError('The room is not connected, so the swarm did not start.');
+      const status = useSocietyStore.getState().runStatus;
+      if (status === 'running' || status === 'cancel_requested') {
+        useSocietyStore.getState().setSocietyError('A run is already in progress.');
+        return;
+      }
+      startSwarm(brief);
     } else {
       useSocietyStore.getState().startBenchmark(brief);
       const sent = networkClient.send({

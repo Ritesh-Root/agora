@@ -26,6 +26,8 @@ const ProjectView: React.FC = () => {
   const {
     userBrief,
     finalOutput,
+    documentWordCount,
+    documentRevision,
     referenceImages,
     phase,
     actionLog,
@@ -123,7 +125,13 @@ const ProjectView: React.FC = () => {
         )}
         {finalOutput && (
           <div className="mt-4 p-4 rounded-xl border border-zinc-100 bg-white/40">
-            <p className="text-[10px] text-zinc-500">This document is only in this tab. A reload clears it.</p>
+            {typeof documentWordCount === 'number' && (
+              <p className="text-[10px] font-bold text-ink" data-testid="document-word-count">{documentWordCount} words</p>
+            )}
+            {documentRevision && (
+              <p className="text-xs font-bold text-amber-700" data-testid="document-revision">{documentRevision}</p>
+            )}
+            <p className="text-[10px] text-zinc-500">Save a copy if you want a file of your own. A server restart clears the room copy.</p>
             <button
               type="button"
               onClick={() => {
