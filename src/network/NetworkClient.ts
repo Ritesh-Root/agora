@@ -35,6 +35,13 @@ function rememberSeat(playerId: string, hostToken?: string): void {
 
 type MessageHandler = (msg: ServerMessage) => void;
 
+function roleIndex(role?: string): number {
+  const agents = getAllAgents(getActiveAgentSet());
+  const named = role?.trim().toLowerCase();
+  const hit = named ? agents.find((agent) => agent.name.toLowerCase() === named) : undefined;
+  return hit?.index ?? agents[0]?.index ?? 0;
+}
+
 /**
  * Thin WebSocket wrapper around the Vite-attached relay (see server/relay.ts).
  * Owns the socket lifecycle and roster bookkeeping; forwards every message to
@@ -51,6 +58,15 @@ export class NetworkClient {
   private manuallyClosed = false;
   /** Set when the relay rejected the join outright (room full). Terminal — suppress auto-reconnect until the user retries. */
   private rejected = false;
+  private swarmSeen = new Set<string>();
+
+  private noteSwarm(action: string, role?: string, key?: string): void {
+    if (key) {
+      if (this.swarmSeen.has(key)) return;
+      this.swarmSeen.add(key);
+    }
+    useCoreStore.getState().addLogEntry({ agentIndex: roleIndex(role), action });
+  }
 
   public connect(name: string, color: string): void {
     this.name = name;
@@ -195,9 +211,11 @@ export class NetworkClient {
         useRoomChatStore.getState().add(msg.message);
         break;
       case 'society-started':
+        this.swarmSeen.clear();
         useDecisionStore.getState().reset();
         useCoreStore.getState().startProject(msg.brief);
         useSocietyStore.getState().startSociety(msg.brief);
+        this.noteSwarm('Started planning');
         break;
       case 'society-decision':
         useDecisionStore.getState().add(msg.decision);
@@ -214,9 +232,16 @@ export class NetworkClient {
           attempt: msg.attempt,
           researching: msg.researching ?? false,
         });
+        if (msg.status === 'running') this.noteSwarm(`Started ${msg.title}`, msg.role, `${msg.taskId}:start`);
+        else if (msg.status === 'healing') this.noteSwarm(`Retrying ${msg.title}`, msg.role, `${msg.taskId}:heal:${msg.attempt ?? 0}`);
+        else if (msg.status === 'done') this.noteSwarm(`Finished ${msg.title}`, msg.role, `${msg.taskId}:done`);
+        else if (msg.status === 'escalated') this.noteSwarm(`Escalated ${msg.title}`, msg.role, `${msg.taskId}:escalated`);
         break;
       case 'society-stage':
         useSocietyStore.getState().setStage(msg.stage);
+        if (msg.stage === 'debating') this.noteSwarm('Debating', undefined, 'stage:debating');
+        else if (msg.stage === 'assembling') this.noteSwarm('Assembling the document', undefined, 'stage:assembling');
+        else if (msg.stage === 'repairing') this.noteSwarm('Repairing the document', undefined, 'stage:repairing');
         break;
       case 'society-negotiation':
         if (msg.scores) {
@@ -261,7 +286,9 @@ export class NetworkClient {
       case 'society-run-status':
         if (msg.status === 'cancel_requested') {
           useSocietyStore.getState().setStage('cancel_requested');
+          this.noteSwarm('Cancellation requested', undefined, 'status:cancel');
         } else if (msg.status === 'stopped') {
+          this.noteSwarm('Execution stopped', undefined, 'status:stopped');
           const restart = useSocietyStore.getState().restartAfterStop;
           const brief = useSocietyStore.getState().brief;
           useSocietyStore.getState().markRunStopped();
@@ -277,6 +304,13 @@ export class NetworkClient {
           useCoreStore.getState().setFinalOutput(msg.result.synthesis);
           useCoreStore.getState().setDocumentMeta(msg.result.wordCount ?? null, msg.result.revisionLabel ?? null);
           if (!msg.result.revisionLabel) useCoreStore.getState().setPhase('done');
+          this.noteSwarm(
+            msg.result.revisionLabel
+              ? `Kept a draft: ${msg.result.revisionLabel}`
+              : `Finished the document${typeof msg.result.wordCount === 'number' ? `, ${msg.result.wordCount} words` : ''}`,
+          );
+        } else {
+          this.noteSwarm('Finished without a document');
         }
 
         // Populate core store tasks to feed into 3D agent simulation
@@ -293,6 +327,7 @@ export class NetworkClient {
         break;
       case 'society-error':
         useSocietyStore.getState().setSocietyError(msg.error);
+        this.noteSwarm(msg.error);
         break;
       case 'benchmark-result':
         useSocietyStore.getState().setBenchmarkResult({

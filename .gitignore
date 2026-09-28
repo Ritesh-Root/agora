@@ -16,3 +16,9 @@ credentials.json
 *.pem
 *.key
 .credentials
+.emergent/
+.gitconfig
+scripts/
+frontend/
+memory/
+test_reports/

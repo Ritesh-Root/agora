@@ -1,7 +1,0 @@
-{
-  "name": "frontend-shim",
-  "private": true,
-  "scripts": {
-    "start": "npm --prefix /app run dev"
-  }
-}

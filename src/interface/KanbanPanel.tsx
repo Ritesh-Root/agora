@@ -157,11 +157,11 @@ export function KanbanPanel({ height = 320 }: KanbanPanelProps) {
     >
       {/* Columns Scroll Area */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden">
-        <div className="flex h-full min-w-max px-5 py-4 gap-4">
+        <div className="flex h-full w-full min-w-max px-5 py-4 gap-4">
           {COLUMNS.map(({ status, label }) => {
             const colTasks = tasks.filter((t) => t.status === status)
             return (
-              <div key={status} className="w-52 flex flex-col gap-3">
+              <div key={status} className="flex-1 basis-52 min-w-52 flex flex-col gap-3">
                 <div className="flex items-center justify-between shrink-0 select-none">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 leading-none">
