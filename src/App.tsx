@@ -93,6 +93,11 @@ const App: React.FC = () => {
       <div className="w-screen h-screen bg-zinc-100 overflow-hidden flex flex-col">
         {/* Top: Header */}
         {!isFullscreen && <Header />}
+        {hasJoined && !isFullscreen && (
+          <p data-testid="demo-warning" className="mx-2.5 mb-2 rounded-2xl bg-white border border-zinc-200/70 px-4 py-2 text-[11px] font-medium text-zinc-600 leading-relaxed">
+            Shared demo for up to 5 people. Everyone in the room can see the brief, the tasks, and the document. A restart or an idle shutdown clears the room. Save a copy if you want a file of your own.
+          </p>
+        )}
 
         <div className={`flex-1 flex flex-row min-h-0 min-w-0 overflow-hidden ${isFullscreen ? '' : 'gap-2.5 px-2.5 pb-2.5'}`}>
           {/* Left: Log panel */}

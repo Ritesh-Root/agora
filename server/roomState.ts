@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import { canSeeChat } from '../shared/mentions';
 import { MAX_PLAYERS, PlayerInfo, RoomChatMessage } from '../shared/protocol';
 
@@ -24,6 +24,14 @@ export interface RoomRun {
   revisionLabel?: string;
 }
 
+function hostCodeMatches(secret: string, code: string | undefined): boolean {
+  if (!code) return false;
+  const a = Buffer.from(secret);
+  const b = Buffer.from(code);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 /** Returns trimmed chat text, or null when it should be dropped. */
 export function normalizeChatText(text: unknown): string | null {
   if (typeof text !== 'string') return null;
@@ -36,7 +44,10 @@ export function normalizeChatText(text: unknown): string | null {
  * Pure roster/slot/cabin bookkeeping for the relay. No socket knowledge —
  * server/relay.ts owns the actual WebSocket connections and calls into this.
  *
- * The first connection to join becomes host. Cabins are optional at join time:
+ * With no demo host secret, the first connection to join becomes host.
+ * When a secret is set, host authority is only the matching code or the
+ * server-issued resume token. A display name never grants it.
+ * Cabins are optional at join time:
  * a 3D office may still be loading, or the host browser may have no WebGPU.
  * The first client that has a loaded office may publish cabin ids; later
  * joiners are not turned away while that list is empty.
@@ -50,6 +61,19 @@ export class RoomState {
   private hostToken: string | null = null;
   private chat: RoomChatMessage[] = [];
   private run: RoomRun | null = null;
+  /** Run ids wiped by End session. Late finishes must not recreate them. */
+  private halted = new Set<string>();
+  private sessionEpoch = 1;
+  private hostSecret: string | null;
+
+  constructor(options?: { hostSecret?: string }) {
+    const secret = options?.hostSecret?.trim();
+    this.hostSecret = secret || null;
+  }
+
+  public epoch(): number {
+    return this.sessionEpoch;
+  }
 
   public cabinsReady(): boolean {
     return this.cabinPoiIds !== null;
@@ -87,20 +111,23 @@ export class RoomState {
     id: string,
     name: string,
     color: string,
-    token?: string
+    token?: string,
+    hostCode?: string
   ): { ok: true; info: PlayerInfo; hostToken?: string } | { ok: false; reason: 'room-full' } {
     const slotIndex = this.nextFreeSlot();
     if (slotIndex === null) {
       return { ok: false, reason: 'room-full' };
     }
 
-    const roomEmpty = this.players.size === 0;
-    if (roomEmpty) {
+    const resumeHost = !!this.hostToken && token === this.hostToken && id === this.hostPlayerId;
+    const codeOk = this.hostSecret ? hostCodeMatches(this.hostSecret, hostCode) : false;
+    const isHost = this.hostSecret
+      ? resumeHost || (codeOk && this.hostId === null)
+      : this.players.size === 0 || resumeHost;
+    if (isHost && !resumeHost) {
       this.hostToken = randomUUID();
       this.hostPlayerId = id;
-      this.hostId = null;
     }
-    const isHost = roomEmpty || (!!this.hostToken && token === this.hostToken && id === this.hostPlayerId);
 
     const info: PlayerInfo = {
       id,
@@ -167,10 +194,11 @@ export class RoomState {
   }
 
   public ownsRun(id: string): boolean {
-    return this.run?.id === id;
+    return this.run?.id === id && !this.halted.has(id);
   }
 
   public cancelRequested(id: string): boolean {
+    if (this.halted.has(id)) return true;
     return !!this.run && this.run.id === id && (this.run.status === 'cancel_requested' || this.run.status === 'stopped');
   }
 
@@ -219,7 +247,29 @@ export class RoomState {
     }
   }
 
+  /** Host only. Stops the run, drops every person, and invalidates the session. */
+  public tryEndSession(playerId: string): { ok: true } | { ok: false; error: string } {
+    if (!this.isHost(playerId)) {
+      return { ok: false, error: 'Only the room host can end the session.' };
+    }
+    this.endSession();
+    return { ok: true };
+  }
+
+  public endSession(): void {
+    if (this.run) this.halted.add(this.run.id);
+    this.players.clear();
+    this.chat = [];
+    this.run = null;
+    this.hostId = null;
+    this.hostPlayerId = null;
+    this.hostToken = null;
+    this.cabinPoiIds = null;
+    this.sessionEpoch += 1;
+  }
+
   public finishRun(id: string, patch: { status: 'complete' | 'needs_revision'; synthesis: string; wordCount?: number; revisionLabel?: string }): boolean {
+    if (this.halted.has(id)) return false;
     if (!this.run || this.run.id !== id) return false;
     if (this.run.status === 'stopped') return false;
     this.run.status = patch.status;

@@ -24,11 +24,14 @@ const JoinModal: React.FC = () => {
   const [color, setColor] = useState<string>(() => {
     try { return localStorage.getItem(COLOR_STORAGE_KEY) || USER_COLOR; } catch { return USER_COLOR; }
   });
+  const [hostCode, setHostCode] = useState('');
 
   const isPreparing = status === 'cabins-not-ready';
   const isBusy = status === 'connecting' || isPreparing;
   const isRoomFull = status === 'room-full';
-  const isFailed = status === 'failed' || status === 'disconnected';
+  const isEnded = status === 'session-ended';
+  const isLeft = status === 'left';
+  const isDropped = status === 'failed' || status === 'disconnected';
 
   const handleJoin = () => {
     const trimmed = name.trim();
@@ -46,7 +49,7 @@ const JoinModal: React.FC = () => {
       return;
     }
 
-    networkClient.connect(trimmed, color);
+    networkClient.connect(trimmed, color, hostCode);
   };
 
   return createPortal(
@@ -64,7 +67,13 @@ const JoinModal: React.FC = () => {
             <p className="text-zinc-400 text-sm font-medium leading-relaxed max-w-[280px]">
               {isRoomFull
                 ? 'All 5 cabins are taken right now. Try again once a spot opens up.'
-                : 'Pick a name and color to get your own cabin in the shared office.'}
+                : isEnded
+                  ? 'The host ended the session. This browser stays disconnected until you join again.'
+                  : isLeft
+                    ? 'You left the room. This browser stays disconnected until you join again.'
+                    : isDropped
+                      ? 'The connection to the room dropped. Reconnect to continue. This is not a local demo.'
+                      : 'Shared demo for up to 5 people. Pick a name and color. A host code is only for the person running the room.'}
             </p>
           </div>
 
@@ -77,10 +86,10 @@ const JoinModal: React.FC = () => {
             </button>
           ) : (
             <>
-              {isFailed && (
+              {isDropped && (
                 <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-2xl">
                   <p className="text-[11px] font-medium text-red-600 leading-tight">
-                    Couldn't reach the host. Check you're on the same network and try again.
+                    Couldn't reach the room. Use Reconnect. The app will not switch to a local demo on its own.
                   </p>
                 </div>
               )}
@@ -113,6 +122,22 @@ const JoinModal: React.FC = () => {
               </div>
 
               {/* Color picker */}
+              <div className="mb-6">
+                <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-300 mb-4 ml-1">
+                  Host code
+                </label>
+                <input
+                  data-testid="join-host-code"
+                  type="password"
+                  value={hostCode}
+                  onChange={(e) => setHostCode(e.target.value)}
+                  placeholder="Only the demo host"
+                  autoComplete="off"
+                  disabled={isBusy}
+                  className="w-full bg-zinc-50 border border-zinc-200/70 rounded-full px-6 py-4 text-sm text-ink font-medium placeholder:text-zinc-400 focus:outline-none focus:border-butter-600 focus:ring-2 focus:ring-butter/40 transition-all shadow-sm disabled:opacity-50"
+                />
+              </div>
+
               <div className="mb-10">
                 <div className="flex items-center gap-1.5 mb-4 ml-1">
                   <Pipette size={12} className="text-zinc-300" />
@@ -129,7 +154,7 @@ const JoinModal: React.FC = () => {
                 disabled={!name.trim() || isBusy}
                 className="w-full px-12 py-4 bg-ink text-white rounded-full text-xs font-black uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-ink/10"
               >
-                {isBusy ? (isPreparing ? 'Waiting for host…' : 'Connecting…') : 'Join'}
+                {isBusy ? (isPreparing ? 'Waiting for host…' : 'Connecting…') : isDropped ? 'Reconnect' : 'Join'}
               </button>
               <button
                 data-testid="watch-replay-btn"

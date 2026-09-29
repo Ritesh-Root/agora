@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { PlayerInfo } from '../../shared/protocol';
 
-export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'room-full' | 'cabins-not-ready';
+export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'room-full' | 'cabins-not-ready' | 'left' | 'session-ended';
 
 interface RosterState {
   status: ConnectionStatus;

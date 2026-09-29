@@ -59,6 +59,7 @@ export class NetworkClient {
   /** Set when the relay rejected the join outright (room full). Terminal — suppress auto-reconnect until the user retries. */
   private rejected = false;
   private swarmSeen = new Set<string>();
+  private hostCode = '';
 
   private noteSwarm(action: string, role?: string, key?: string): void {
     if (key) {
@@ -68,9 +69,10 @@ export class NetworkClient {
     useCoreStore.getState().addLogEntry({ agentIndex: roleIndex(role), action });
   }
 
-  public connect(name: string, color: string): void {
+  public connect(name: string, color: string, hostCode?: string): void {
     this.name = name;
     this.color = color;
+    if (hostCode !== undefined) this.hostCode = hostCode.trim();
     this.manuallyClosed = false;
     this.rejected = false;
     this.reconnectAttempts = 0;
@@ -78,13 +80,24 @@ export class NetworkClient {
     this._open();
   }
 
-  public disconnect(): void {
+  public leaveRoom(): void {
     this.manuallyClosed = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.send({ type: 'leave' });
     this.ws?.close();
     this.ws = null;
-    useRosterStore.getState().reset();
+    this.clearLocalRoom();
+    useRosterStore.getState().setStatus('left');
+  }
+
+  public endSession(): void {
+    this.manuallyClosed = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.send({ type: 'end-session' });
+  }
+
+  public disconnect(): void {
+    this.leaveRoom();
   }
 
   /**
@@ -150,6 +163,7 @@ export class NetworkClient {
         color: this.color,
         resumeId: seat?.playerId,
         resumeToken: seat?.hostToken,
+        ...(this.hostCode ? { hostCode: this.hostCode } : {}),
       });
     };
 
@@ -168,9 +182,17 @@ export class NetworkClient {
     };
   }
 
+  private clearLocalRoom(): void {
+    try { sessionStorage.removeItem(SEAT_KEY); } catch { /* private mode */ }
+    useRosterStore.getState().reset();
+    useRoomChatStore.getState().reset();
+    useCoreStore.getState().resetProject();
+    useSocietyStore.getState().resetSociety();
+  }
+
   private _scheduleReconnect(): void {
     if (this.reconnectAttempts >= RECONNECT_DELAYS_MS.length) {
-      this.enterDemoMode();
+      useRosterStore.getState().setStatus('disconnected');
       return;
     }
     const delay = RECONNECT_DELAYS_MS[this.reconnectAttempts];
@@ -185,6 +207,14 @@ export class NetworkClient {
   private _handleMessage(msg: ServerMessage): void {
     const roster = useRosterStore.getState();
     switch (msg.type) {
+      case 'session-ended':
+        this.manuallyClosed = true;
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        this.ws?.close();
+        this.ws = null;
+        this.clearLocalRoom();
+        useRosterStore.getState().setStatus('session-ended');
+        break;
       case 'joined':
         this.reconnectAttempts = 0;
         rememberSeat(msg.me.id, msg.hostToken);

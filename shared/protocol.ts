@@ -106,10 +106,11 @@ export interface SocietyResultWire {
 }
 
 export type ClientMessage =
-  | { type: 'join'; name: string; color: string; resumeId?: string; resumeToken?: string }
+  | { type: 'join'; name: string; color: string; resumeId?: string; resumeToken?: string; hostCode?: string }
   | { type: 'player-state'; pos: [number, number, number]; vel: [number, number]; animState: string; speaking: boolean }
   | { type: 'npc-state'; npcs: RemoteNpcState[] }
   | { type: 'leave' }
+  | { type: 'end-session' }
   | { type: 'register-cabins'; cabinPoiIds: string[] }
   | { type: 'run-society'; brief: string; baseUrl?: string; apiKey?: string; model?: string; agents?: { name: string; description: string; model?: string }[] }
   | { type: 'run-benchmark'; brief: string; baseUrl?: string; apiKey?: string; model?: string }
@@ -125,6 +126,7 @@ export type ServerMessage =
   | { type: 'player-state'; playerId: string; pos: [number, number, number]; vel: [number, number]; animState: string; speaking: boolean }
   | { type: 'npc-state'; npcs: RemoteNpcState[] }
   | { type: 'player-left'; playerId: string }
+  | { type: 'session-ended' }
   | { type: 'society-started'; brief: string; taskCount: number }
   | { type: 'society-task-update'; taskId: string; title: string; role: string; status: 'running' | 'done' | 'healing' | 'escalated'; output?: string; attempt?: number; researching?: boolean }
   | { type: 'society-negotiation'; topic: string; round: number; agent: string; argument: string; scores?: Array<{ agent: string; score: number; reason: string }> }

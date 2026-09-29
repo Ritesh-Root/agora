@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertPublicHttpsTarget, isPrivateAddress } from './proxyGuard';
+import { assertChatProxyTarget, assertPublicHttpsTarget, isPrivateAddress } from './proxyGuard';
 
 const publicResolve = async () => ['93.184.216.34'];
 
@@ -17,6 +17,13 @@ describe('proxy target guard', () => {
   it('allows a public https host', async () => {
     const url = await assertPublicHttpsTarget('https://example.com/v1/chat/completions', publicResolve);
     expect(url.hostname).toBe('example.com');
+  });
+
+  it('allows only a public chat-completions URL through the proxy', async () => {
+    const url = await assertChatProxyTarget('https://example.com/v1/chat/completions', publicResolve);
+    expect(url.pathname).toBe('/v1/chat/completions');
+    await expect(assertChatProxyTarget('https://example.com/secret', publicResolve)).rejects.toThrow(/not allowed/);
+    await expect(assertChatProxyTarget('https://169.254.169.254/v1/chat/completions', publicResolve)).rejects.toThrow(/not allowed/);
   });
 
   it('rejects non-https, localhost, and private DNS answers', async () => {

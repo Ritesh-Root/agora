@@ -77,6 +77,19 @@ describe('room run', () => {
     expect(room.currentRun()?.synthesis).toBe('new');
   });
 
+  it('does not grant host from a display name when a demo secret is set', () => {
+    const room = new RoomState({ hostSecret: 'demo-secret' });
+    const named = room.join('m', 'Boss', '#111', undefined, 'true');
+    expect(named.ok && named.info.isHost).toBe(false);
+    expect(room.tryEndSession('m')).toEqual({ ok: false, error: 'Only the room host can end the session.' });
+    expect(room.getRoster()).toHaveLength(1);
+
+    const host = room.join('h', 'Visitor', '#222', undefined, 'demo-secret');
+    expect(host.ok && host.info.isHost).toBe(true);
+    const thief = room.join('t', 'Visitor', '#333', undefined, 'demo-secret');
+    expect(thief.ok && thief.info.isHost).toBe(false);
+  });
+
   it('keeps the run after the room empties so a reconnect can restore it', () => {
     const room = new RoomState();
     const host = room.join('h', 'Host', '#111');
@@ -85,5 +98,24 @@ describe('room run', () => {
     expect(begun.ok).toBe(true);
     room.leave('h');
     expect(room.currentRun()?.brief).toBe('brief');
+  });
+
+  it('ends the session so a late finish cannot restore the document', () => {
+    const room = new RoomState();
+    const host = room.join('h', 'Host', '#111');
+    expect(host.ok).toBe(true);
+    room.addChat({ id: 'c', playerId: 'h', name: 'Host', text: 'hello', timestamp: 1 });
+    const begun = room.beginRun('brief');
+    expect(begun.ok).toBe(true);
+    if (!begun.ok) return;
+    const epoch = room.epoch();
+    expect(room.tryEndSession('h').ok).toBe(true);
+    expect(room.getRoster()).toEqual([]);
+    expect(room.getChat()).toEqual([]);
+    expect(room.currentRun()).toBeNull();
+    expect(room.epoch()).toBe(epoch + 1);
+    expect(room.cancelRequested(begun.run.id)).toBe(true);
+    expect(room.finishRun(begun.run.id, { status: 'complete', synthesis: 'late' })).toBe(false);
+    expect(room.currentRun()).toBeNull();
   });
 });

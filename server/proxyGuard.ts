@@ -46,8 +46,23 @@ export async function assertPublicHttpsTarget(
   if (!host || host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) {
     throw new Error('Target host is not allowed');
   }
+  if (isIP(host) && isPrivateAddress(host)) {
+    throw new Error('Target host is not allowed');
+  }
   const ips = await resolve(host);
   if (ips.length === 0 || ips.some(isPrivateAddress)) {
+    throw new Error('Target host is not allowed');
+  }
+  return url;
+}
+
+/** Chat-completions proxy target. Not a general open proxy. */
+export async function assertChatProxyTarget(
+  raw: string,
+  resolve: (hostname: string) => Promise<string[]> = defaultResolve,
+): Promise<URL> {
+  const url = await assertPublicHttpsTarget(raw, resolve);
+  if (!url.pathname.endsWith('/chat/completions')) {
     throw new Error('Target host is not allowed');
   }
   return url;
@@ -69,6 +84,9 @@ export async function assertPublicWebTarget(
   }
   const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
   if (!host || host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) {
+    throw new Error('Target host is not allowed');
+  }
+  if (isIP(host) && isPrivateAddress(host)) {
     throw new Error('Target host is not allowed');
   }
   const ips = await resolve(host);

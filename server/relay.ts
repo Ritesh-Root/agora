@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { readFileSync } from 'fs';
+import type { IncomingMessage, Server, ServerResponse } from 'http';
 import type { WebSocket as WsSocket } from 'ws';
 import type { Plugin, ViteDevServer } from 'vite';
 import { WebSocket, WebSocketServer } from 'ws';
@@ -12,24 +13,101 @@ import { runSociety } from './society/Orchestrator';
 import { leadNotesFromConflict } from './society/leadNotes';
 import { runBenchmark } from './bench/runner';
 import { createServerProvider } from './society/provider';
-import { assertPublicHttpsTarget, MAX_PROXY_BODY } from './proxyGuard';
+import { resolveModelAccess } from './modelAccess';
+import { assertChatProxyTarget, MAX_PROXY_BODY } from './proxyGuard';
 import { beginRunStats, currentRunStats, endRunStats } from './society/decider/runStats';
 import { setBossAsker, setDecisionSink, toDecisionWire } from './society/decider/live';
 import { researchSearchCount, researchSources } from './research/research';
 
-function chatUrl(baseUrl: string): string {
-  const root = baseUrl.trim().replace(/\/$/, '');
-  return root.endsWith('/chat/completions') ? root : `${root}/chat/completions`;
+async function providerFromClient(msg: { apiKey?: string; baseUrl?: string }) {
+  const access = await resolveModelAccess(msg);
+  return createServerProvider(access.apiKey, access.baseUrl ? { baseUrl: access.baseUrl } : undefined);
 }
 
-async function providerFromClient(msg: { apiKey?: string; baseUrl?: string }) {
-  const apiKey = msg.apiKey?.trim() || process.env.DASHSCOPE_API_KEY || '';
-  if (!apiKey) {
-    throw new Error('Add an API key in the app, or set DASHSCOPE_API_KEY on the server.');
+/** Forwards one caller-keyed chat completion. Never adds the server key. */
+export function handleCorsProxy(req: IncomingMessage, res: ServerResponse): boolean {
+  const pathname = (req.url ?? '').split('?')[0];
+  if (pathname !== '/api/cors-proxy') return false;
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Target-URL',
+    });
+    res.end();
+    return true;
   }
-  const baseUrl = msg.baseUrl?.trim();
-  if (baseUrl) await assertPublicHttpsTarget(chatUrl(baseUrl));
-  return createServerProvider(apiKey, baseUrl ? { baseUrl: chatUrl(baseUrl) } : undefined);
+
+  if (req.method !== 'POST') {
+    res.writeHead(405, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Method not allowed' }));
+    return true;
+  }
+
+  const targetUrl = req.headers['x-target-url'];
+  if (typeof targetUrl !== 'string' || !targetUrl) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Missing X-Target-URL header' }));
+    return true;
+  }
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'A caller API key is required for this endpoint.' }));
+    return true;
+  }
+
+  let settled = false;
+  const fail = (status: number, error: string) => {
+    if (settled) return;
+    settled = true;
+    res.writeHead(status, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error }));
+  };
+
+  const chunks: Buffer[] = [];
+  let size = 0;
+  req.on('data', (chunk: Buffer) => {
+    size += chunk.length;
+    if (size > MAX_PROXY_BODY) {
+      fail(413, 'Request body too large');
+      req.destroy();
+      return;
+    }
+    chunks.push(chunk);
+  });
+  req.on('end', async () => {
+    if (settled) return;
+    try {
+      const url = await assertChatProxyTarget(targetUrl);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: authorization,
+      };
+      if (req.headers.accept) headers.Accept = req.headers.accept as string;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: Buffer.concat(chunks),
+        redirect: 'error',
+      });
+      const text = await response.text();
+      if (settled) return;
+      settled = true;
+      res.writeHead(response.status, {
+        'Content-Type': response.headers.get('content-type') || 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(text);
+    } catch (err) {
+      console.error('[CORS Proxy Error]:', err instanceof Error ? err.message : 'request failed');
+      const message = err instanceof Error ? err.message : String(err);
+      const blocked = message === 'Invalid target URL' || message.includes('not allowed') || message.includes('https') || message.includes('redirect');
+      fail(blocked ? 400 : 500, message.includes('redirect') ? 'Target host is not allowed' : message);
+    }
+  });
+  return true;
 }
 
 const RELAY_PATH = '/__relay';
@@ -117,97 +195,26 @@ function forwardSocietyEvent(
  * reloads).
  */
 export function relayPlugin(): Plugin {
-  let wss: WebSocketServer | null = null;
-
   return {
     name: 'agora-relay',
     configureServer(server: ViteDevServer) {
-      // ── Generic CORS Proxy Middleware ──────────────────────────
-      server.middlewares.use(async (req, res, next) => {
-        if (req.url === '/api/cors-proxy' && req.method === 'POST') {
-          const targetUrl = req.headers['x-target-url'] as string;
-          if (!targetUrl) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Missing X-Target-URL header' }));
-            return;
-          }
-
-          let settled = false;
-          const fail = (status: number, error: string) => {
-            if (settled) return;
-            settled = true;
-            res.writeHead(status, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error }));
-          };
-
-          const chunks: Buffer[] = [];
-          let size = 0;
-          req.on('data', (chunk: Buffer) => {
-            size += chunk.length;
-            if (size > MAX_PROXY_BODY) {
-              fail(413, 'Request body too large');
-              req.destroy();
-              return;
-            }
-            chunks.push(chunk);
-          });
-          req.on('end', async () => {
-            if (settled) return;
-            try {
-              const url = await assertPublicHttpsTarget(targetUrl);
-              const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-              };
-              if (req.headers.authorization) {
-                headers['Authorization'] = req.headers.authorization;
-              }
-              if (req.headers.accept) {
-                headers['Accept'] = req.headers.accept as string;
-              }
-
-              const response = await fetch(url, {
-                method: 'POST',
-                headers,
-                body: Buffer.concat(chunks),
-              });
-
-              const text = await response.text();
-              if (settled) return;
-              settled = true;
-              res.writeHead(response.status, {
-                'Content-Type': response.headers.get('content-type') || 'application/json',
-                'Access-Control-Allow-Origin': '*',
-              });
-              res.end(text);
-            } catch (err) {
-              console.error('[CORS Proxy Error]:', err);
-              const message = err instanceof Error ? err.message : String(err);
-              const blocked = message === 'Invalid target URL' || message.includes('not allowed') || message.includes('https');
-              fail(blocked ? 400 : 500, message);
-            }
-          });
-          return;
-        }
-
-        if (req.url === '/api/cors-proxy' && req.method === 'OPTIONS') {
-          res.writeHead(204, {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Target-URL',
-          });
-          res.end();
-          return;
-        }
-
+      server.middlewares.use((req, res, next) => {
+        if (handleCorsProxy(req, res)) return;
         next();
       });
-
       if (!server.httpServer) {
         console.warn('[relay] No httpServer (middleware mode?) — relay disabled.');
         return;
       }
+      attachRelay(server.httpServer);
+    },
+  };
+}
 
-      const room = new RoomState();
+/** Room relay for the Vite dev server and the production process. */
+export function attachRelay(httpServer: Server): void {
+  let wss: WebSocketServer | null = null;
+  const room = new RoomState({ hostSecret: process.env.DEMO_HOST_SECRET });
       const sockets = new Map<string, WsSocket>();
       let replyChain = Promise.resolve();
 
@@ -224,7 +231,7 @@ export function relayPlugin(): Plugin {
       wss = new WebSocketServer({ noServer: true });
 
       // Route upgrades by path: claim /__relay, ignore the rest so Vite's HMR works.
-      server.httpServer.on('upgrade', (req, socket, head) => {
+      httpServer.on('upgrade', (req, socket, head) => {
         let pathname: string;
         try {
           pathname = new URL(req.url ?? '', 'http://localhost').pathname;
@@ -266,8 +273,9 @@ export function relayPlugin(): Plugin {
               const requested = typeof msg.resumeId === 'string' ? msg.resumeId.trim() : '';
               const resumeId = /^[0-9a-f-]{36}$/i.test(requested) ? requested : '';
               const resumeToken = typeof msg.resumeToken === 'string' ? msg.resumeToken : undefined;
+              const hostCode = typeof msg.hostCode === 'string' ? msg.hostCode : undefined;
               const id = resumeId && room.canResume(resumeId, resumeToken) ? resumeId : randomUUID();
-              const result = room.join(id, msg.name, msg.color, resumeToken);
+              const result = room.join(id, msg.name, msg.color, resumeToken, hostCode);
               if (!result.ok) {
                 const { reason } = result as { ok: false; reason: 'room-full' };
                 send(ws, { type: reason });
@@ -330,8 +338,11 @@ export function relayPlugin(): Plugin {
 
               const senderId = playerId;
               const model = msg.model?.trim();
+              const epoch = room.epoch();
               replyChain = replyChain.then(async () => {
+                if (room.epoch() !== epoch) return;
                 const post = (name: string, replyText: string) => {
+                  if (room.epoch() !== epoch) return;
                   const reply = {
                     id: randomUUID(),
                     playerId: `agent:${name}`,
@@ -392,6 +403,21 @@ export function relayPlugin(): Plugin {
             }
             case 'leave': {
               ws.close();
+              break;
+            }
+            case 'end-session': {
+              if (!playerId) return;
+              const ended = room.tryEndSession(playerId);
+              if (!ended.ok) {
+                send(ws, { type: 'society-error', error: ended.error });
+                break;
+              }
+              const notice: ServerMessage = { type: 'session-ended' };
+              for (const sock of sockets.values()) {
+                send(sock, notice);
+                sock.close();
+              }
+              sockets.clear();
               break;
             }
             case 'cancel-run': {
@@ -653,10 +679,8 @@ export function relayPlugin(): Plugin {
         });
       });
 
-      server.httpServer.once('close', () => {
-        wss?.close();
-        wss = null;
-      });
-    },
-  };
+  httpServer.once('close', () => {
+    wss?.close();
+    wss = null;
+  });
 }

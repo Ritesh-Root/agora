@@ -20,6 +20,8 @@ const Header: React.FC = () => {
   const { llmConfig, isBYOKOpen, setBYOKOpen, isNegotiationOpen, setNegotiationOpen } = useUiStore();
   const { setViewMode } = useCoreStore();
   const roster = useRosterStore((s) => s.roster);
+  const self = useRosterStore((s) => s.self);
+  const [confirmEnd, setConfirmEnd] = useState(false);
   const swarmWorking = useSocietyStore((s) => s.isRunning || s.isBenchmarking);
   const swarmStage = useSocietyStore((s) => s.stage);
   const swarmLabel = swarmStage === 'debating'
@@ -198,6 +200,35 @@ const Header: React.FC = () => {
             )}
           </div>
         </div>
+
+        <div className="w-px h-4 bg-zinc-200" />
+
+        {self?.isHost ? (
+          <button
+            data-testid="end-session-btn"
+            onClick={() => {
+              if (!confirmEnd) {
+                setConfirmEnd(true);
+                return;
+              }
+              setConfirmEnd(false);
+              networkClient.endSession();
+            }}
+            className="px-3 h-9 rounded-full bg-ink text-white text-[10px] font-black uppercase tracking-wider cursor-pointer"
+            title="End the room for everyone"
+          >
+            {confirmEnd ? 'End for everyone' : 'End session'}
+          </button>
+        ) : (
+          <button
+            data-testid="leave-room-btn"
+            onClick={() => networkClient.leaveRoom()}
+            className="px-3 h-9 rounded-full border border-zinc-200 text-ink text-[10px] font-black uppercase tracking-wider cursor-pointer"
+            title="Leave this room"
+          >
+            Leave room
+          </button>
+        )}
 
         <div className="w-px h-4 bg-zinc-200" />
 
