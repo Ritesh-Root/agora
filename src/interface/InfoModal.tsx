@@ -31,21 +31,18 @@ const InfoModal: React.FC<InfoModalProps> = ({ onClose }) => {
           </div>
 
           <h2 className="text-3xl font-black text-ink leading-[1.2] mb-6 tracking-tight text-center">
-            A no-code 3D playground to explore Agentic AI systems
+            People and agents, one shared workspace
           </h2>
 
           <div className="space-y-6 text-zinc-500 text-[15px] leading-relaxed text-center sm:text-left">
             <p>
-              AGORA is an experimental workspace where you stop prompting and start delegating to a society of autonomous AI agents in a living 3D office.
-            </p>
-            <p>
-              Designed for enthusiasts, educators, and creative developers to understand multi-agent collaboration, making complex AI processes transparent, collaborative, and human-centered.
+              AGORA is a room for tasks, chat, and one Markdown document. The session is a 3D office, with a 2D office when that renderer cannot start.
             </p>
           </div>
 
           <div className="mt-6 flex flex-col items-center gap-6">
             <a
-              href="https://github.com/Ritesh-Root/agora"
+              href="https://github.com/Ritesh-Root/new-desgn-agora"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2.5 px-8 py-3.5 bg-zinc-100 text-zinc-600 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all active:scale-95 cursor-pointer shadow-sm w-full"
@@ -57,18 +54,15 @@ const InfoModal: React.FC<InfoModalProps> = ({ onClose }) => {
             </a>
 
             <div className="w-full border-t border-zinc-100 pt-5 text-center">
-              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block">Created By</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block">Maintainer</span>
               <a
-                href="https://riteshhoon.online"
+                href="https://github.com/Ritesh-Root"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-black text-ink hover:underline block mt-1"
               >
-                Ritesh Kumar Mahato
+                Ritesh-Root
               </a>
-              <span className="text-[9px] text-zinc-400 font-medium block mt-0.5">
-                Full-Stack AI Developer · ITER CS B.Tech
-              </span>
             </div>
           </div>
         </div>

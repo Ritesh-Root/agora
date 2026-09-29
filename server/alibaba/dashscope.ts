@@ -1,18 +1,8 @@
 /**
- * AGORA — Qwen Cloud Integration (Proof of Deployment)
+ * OpenAI-compatible chat client for the Qwen Cloud Token Plan endpoint.
  *
- * This file serves as the official proof that AGORA's backend and agent orchestration
- * consumes Qwen Cloud AI services via the OpenAI-compatible chat completions API.
- *
- * 1. AI Services:
- *    - Models: Qwen Cloud text (qwen3.8-max, qwen3.7-plus, qwen3.8-flash, …)
- *    - Platform: Qwen Cloud Token Plan compatible-mode API
- *    - Base Endpoint: https://token-plan.maas.qwencloudapi.com/compatible-mode/v1/chat/completions
- *    - Auth: Authorization: Bearer $DASHSCOPE_API_KEY (sk-sp-… for Token Plan)
- *
- * 2. Backend Orchestration:
- *    - Hosted on Alibaba Cloud Function Compute (FC) or Elastic Compute Service (ECS)
- *    - Utilizes secure environment variables for API authentication (DASHSCOPE_API_KEY)
+ * Base: https://token-plan.maas.qwencloudapi.com/compatible-mode/v1/chat/completions
+ * Auth: Authorization Bearer, from the caller or DASHSCOPE_API_KEY.
  *
  * @see https://docs.qwencloud.com/developer-guides/getting-started/first-api-call
  * @see https://docs.qwencloud.com/api-reference/preparation/api-key

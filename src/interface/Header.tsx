@@ -114,7 +114,7 @@ const Header: React.FC = () => {
 
           <div className="flex items-center gap-3 min-w-0">
             <a
-              href="https://github.com/Ritesh-Root/agora"
+              href="https://github.com/Ritesh-Root/new-desgn-agora"
               target="_blank"
               rel="noopener"
               className="text-zinc-300 hover:text-ink transition-colors shrink-0"

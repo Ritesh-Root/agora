@@ -1,15 +1,12 @@
 /**
- * Society Orchestrator — the core of AGORA's "agent society".
+ * Society Orchestrator.
  *
- * Lifecycle (Track 3 mechanics):
- *   1. Manager (qwen3.8-max) decomposes a brief into parallelizable subtasks + roles.
- *   2. Workers (qwen3.7-plus) execute concurrently (Promise.all).
- *   3. Worker self-heal: an invalid output is diagnosed and retried ONCE before
- *      escalating to a human-in-the-loop.
+ * Lifecycle:
+ *   1. Planning decomposes a brief into subtasks.
+ *   2. Workers execute concurrently.
+ *   3. An invalid worker output can be retried once.
  *
- * Provider-agnostic: depends only on the minimal `LLMLike` shape, which both
- * QwenProvider and NvidiaProvider satisfy structurally. Kept free of DOM/React
- * so it runs server-side (Alibaba FC/ECS) and under the strict server tsconfig.
+ * Depends only on the LLMLike shape. Free of DOM and React so it runs in the room server.
  */
 
 import { judgeWorkerOutput } from './decider/gates';

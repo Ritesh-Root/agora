@@ -61,7 +61,7 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
   },
 };
 
-/** Qwen Cloud is the default — it is the hackathon's required core provider. */
+/** Default browser provider. Other OpenAI-compatible endpoints are allowed with the caller's key. */
 export const DEFAULT_PROVIDER: ProviderId = 'qwen';
 
 const fallbackModel = PROVIDERS[DEFAULT_PROVIDER].defaultModel;

@@ -1,11 +1,11 @@
 {
   "name": "agora",
-  "description": "A no-code platform where a society of Qwen-powered agents self-organizes to complete a brief, visualized live in a 3D office",
+  "description": "Open-source workspace where people and AI agents share tasks, chat, and a Markdown document, with a 3D office and a 2D fallback",
   "license": "MIT",
   "author": "Ritesh-Root <workstationritalks@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Ritesh-Root/agora.git"
+    "url": "https://github.com/Ritesh-Root/new-desgn-agora.git"
   },
   "private": true,
   "version": "0.1.0",
