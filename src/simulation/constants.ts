@@ -37,5 +37,5 @@ export const ENCOUNTER_RADIUS = 1.5;
 /** Zone ID used with three-pathfinding. */
 export const NAVMESH_ZONE = 'level';
 
-/** Color de fondo de la escena (Three.js) */
-export const SCENE_BACKGROUND_COLOR = 0xFaFcFb;
+/** Flat clear color behind the office. */
+export const SCENE_BACKGROUND_COLOR = 0xE4DDD2;
